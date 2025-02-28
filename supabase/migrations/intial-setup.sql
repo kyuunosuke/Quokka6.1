@@ -15,5 +15,3 @@ CREATE TABLE IF NOT EXISTS public.users (
 );
 
 CREATE INDEX IF NOT EXISTS user_id_idx ON public.users(user_id);
-
-CREATE INDEX IF NOT EXISTS invoices_user_id_idx ON public.invoices(user_id);
