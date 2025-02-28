@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 
-const nextConfig = {};
+const nextConfig = {
+    images: {
+        domains: ['images.unsplash.com'],
+    }
+};
 
 if (process.env.NEXT_PUBLIC_TEMPO) {
     nextConfig["experimental"] = {
