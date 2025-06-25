@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_setup_log: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          notes: string | null
+          setup_date: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          notes?: string | null
+          setup_date?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          notes?: string | null
+          setup_date?: string | null
+        }
+        Relationships: []
+      }
       competition_categories: {
         Row: {
           color_scheme: string | null
@@ -463,7 +487,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_admin_user: {
+        Args: {
+          admin_email: string
+          admin_password: string
+          admin_name?: string
+        }
+        Returns: string
+      }
+      validate_admin_credentials: {
+        Args: { check_email: string; check_password: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
