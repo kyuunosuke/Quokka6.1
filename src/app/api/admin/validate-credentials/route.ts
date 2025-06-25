@@ -43,7 +43,20 @@ export async function POST(request: NextRequest) {
     if (!existingProfile) {
       // Try to create admin user using service role
       try {
-        const serviceSupabase = createClient();
+        // Create service role client for admin operations
+        const { createClient: createServiceClient } = await import(
+          "@supabase/supabase-js"
+        );
+        const serviceSupabase = createServiceClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_KEY!,
+          {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false,
+            },
+          },
+        );
 
         // Create auth user first
         const { data: authData, error: authError } =
