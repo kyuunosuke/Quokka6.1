@@ -83,14 +83,31 @@ export async function POST(request: NextRequest) {
             });
 
           if (authError) {
-            console.error("Error creating admin auth user:", authError);
-            return NextResponse.json(
-              { valid: false, error: "Failed to create admin user" },
-              { status: 500 },
-            );
-          }
+            // If user already exists, try to get them again
+            if (authError.message?.includes("already been registered")) {
+              const { data: retryUser, error: retryError } =
+                await serviceSupabase.auth.admin.getUserByEmail(adminEmail);
 
-          userId = authData.user.id;
+              if (retryUser && !retryError) {
+                userId = retryUser.id;
+                console.log("Found existing admin user after creation attempt");
+              } else {
+                console.error("Error finding existing admin user:", retryError);
+                return NextResponse.json(
+                  { valid: false, error: "Failed to locate admin user" },
+                  { status: 500 },
+                );
+              }
+            } else {
+              console.error("Error creating admin auth user:", authError);
+              return NextResponse.json(
+                { valid: false, error: "Failed to create admin user" },
+                { status: 500 },
+              );
+            }
+          } else {
+            userId = authData.user.id;
+          }
         }
 
         // Update profile to admin role
