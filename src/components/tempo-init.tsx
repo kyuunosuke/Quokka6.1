@@ -1,13 +1,17 @@
 "use client";
 
-import { TempoDevtools } from "tempo-devtools";
 import { useEffect } from "react";
 
 export function TempoInit() {
   useEffect(() => {
-    if (process.env.NEXT_PUBLIC_TEMPO) {
-      TempoDevtools.init();
-    }
+    const init = async () => {
+      if (process.env.NEXT_PUBLIC_TEMPO) {
+        const { TempoDevtools } = await import("tempo-devtools");
+        TempoDevtools.init();
+      }
+    };
+
+    init();
   }, []);
 
   return null;
