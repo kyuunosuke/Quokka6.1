@@ -7,9 +7,11 @@ export default function Hero() {
     e: React.MouseEvent<HTMLAnchorElement>,
   ) => {
     e.preventDefault();
-    const element = document.querySelector("#competitions");
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
+    if (typeof window !== "undefined") {
+      const element = document.querySelector("#competitions");
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
     }
   };
 
