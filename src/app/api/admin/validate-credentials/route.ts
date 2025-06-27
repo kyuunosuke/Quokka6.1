@@ -60,8 +60,10 @@ export async function POST(request: NextRequest) {
 
         // First check if user already exists in auth.users
         const { data: existingUser, error: getUserError } =
-          await serviceSupabase.auth.admin.getUserByEmail(adminEmail);
-
+          await serviceSupabase.auth.admin.listUsers();
+        
+const existingUser = listData.users.find(user => user.email === adminEmail);
+        
         let userId: string;
 
         if (existingUser && !getUserError) {
@@ -85,9 +87,12 @@ export async function POST(request: NextRequest) {
           if (authError) {
             // If user already exists, try to get them again
             if (authError.message?.includes("already been registered")) {
-              const { data: retryUser, error: retryError } =
-                await serviceSupabase.auth.admin.getUserByEmail(adminEmail);
-
+             
+              const { data: retryUsers, error: retryError } =
+                await serviceSupabase.auth.admin.listUsers();
+              
+              const retryUser = retryUsers?.users?.find(user => user.email === adminEmail)
+              
               if (retryUser && !retryError) {
                 userId = retryUser.id;
                 console.log("Found existing admin user after creation attempt");
