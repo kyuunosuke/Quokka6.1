@@ -62,8 +62,6 @@ export async function POST(request: NextRequest) {
         const { data: existingUser, error: getUserError } =
           await serviceSupabase.auth.admin.listUsers();
         
-const existingUser = listData.users.find(user => user.email === adminEmail);
-        
         let userId: string;
 
         if (existingUser && !getUserError) {
