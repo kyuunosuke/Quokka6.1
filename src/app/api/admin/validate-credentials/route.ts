@@ -58,28 +58,61 @@ export async function POST(request: NextRequest) {
           },
         );
 
-        // Create auth user first
-        const { data: authData, error: authError } =
-          await serviceSupabase.auth.admin.createUser({
-            email: adminEmail,
-            password: adminPassword,
-            email_confirm: true,
-            user_metadata: {
-              full_name: process.env.ADMIN_NAME || "System Administrator",
-            },
-          });
+        // First check if user already exists in auth.users
+        const { data: existingUser, error: getUserError } =
+          await serviceSupabase.auth.admin.getUserByEmail(adminEmail);
 
-        if (authError) {
-          console.error("Error creating admin auth user:", authError);
-          return NextResponse.json(
-            { valid: false, error: "Failed to create admin user" },
-            { status: 500 },
+        let userId: string;
+
+        if (existingUser && !getUserError) {
+          // User exists in auth, use their ID
+          userId = existingUser.id;
+          console.log(
+            "Admin user already exists in auth, updating profile only",
           );
+        } else {
+          // User doesn't exist, create new auth user
+          const { data: authData, error: authError } =
+            await serviceSupabase.auth.admin.createUser({
+              email: adminEmail,
+              password: adminPassword,
+              email_confirm: true,
+              user_metadata: {
+                full_name: process.env.ADMIN_NAME || "System Administrator",
+              },
+            });
+
+          if (authError) {
+            // If user already exists, try to get them again
+            if (authError.message?.includes("already been registered")) {
+              const { data: retryUser, error: retryError } =
+                await serviceSupabase.auth.admin.getUserByEmail(adminEmail);
+
+              if (retryUser && !retryError) {
+                userId = retryUser.id;
+                console.log("Found existing admin user after creation attempt");
+              } else {
+                console.error("Error finding existing admin user:", retryError);
+                return NextResponse.json(
+                  { valid: false, error: "Failed to locate admin user" },
+                  { status: 500 },
+                );
+              }
+            } else {
+              console.error("Error creating admin auth user:", authError);
+              return NextResponse.json(
+                { valid: false, error: "Failed to create admin user" },
+                { status: 500 },
+              );
+            }
+          } else {
+            userId = authData.user.id;
+          }
         }
 
         // Update profile to admin role
         const { error: profileError } = await supabase.from("profiles").upsert({
-          id: authData.user.id,
+          id: userId,
           email: adminEmail,
           full_name: process.env.ADMIN_NAME || "System Administrator",
           role: "admin",
