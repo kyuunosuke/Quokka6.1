@@ -12,9 +12,9 @@ export async function POST(request: NextRequest) {
       process.env.ADMIN_EMAILS?.split(",").map((e) => e.trim()) || [];
 
     // ✅ TEMPORARY: Debug logs from chatgpt
-console.log("ENV ADMIN_EMAIL:", adminEmail);
-console.log("ENV ADMIN_PASSWORD:", adminPassword);
-console.log("ENV ADMIN_EMAILS:", adminEmails);
+    console.log("ENV ADMIN_EMAIL:", adminEmail);
+    console.log("ENV ADMIN_PASSWORD:", adminPassword);
+    console.log("ENV ADMIN_EMAILS:", adminEmails);
 
     if (!adminEmail || !adminPassword) {
       return NextResponse.json(
@@ -68,24 +68,23 @@ console.log("ENV ADMIN_EMAILS:", adminEmails);
         const { data: listData, error: getUserError } =
           await serviceSupabase.auth.admin.listUsers();
 
- let userId: string;
-        
-        const foundUser = listData?.users?.find(u => u.email === adminEmail);
+        let userId: string;
+
+        const foundUser = listData?.users?.find((u) => u.email === adminEmail);
         if (foundUser && !getUserError) {
-  userId = foundUser.id;
-  console.log("Admin user already exists in auth, updating profile only");
-}
+          userId = foundUser.id;
+          console.log(
+            "Admin user already exists in auth, updating profile only",
+          );
+        }
 
-        
-       
-
-       // if (existingUser && !getUserError) {
-          // User exists in auth, use their ID
+        // if (existingUser && !getUserError) {
+        // User exists in auth, use their ID
         //  userId = existingUser.id;
         //  console.log("Admin user already exists in auth, updating profile only",);
-        
-    // } else 
-        
+
+        // } else
+
         {
           // User doesn't exist, create new auth user
           const { data: authData, error: authError } =
@@ -101,14 +100,15 @@ console.log("ENV ADMIN_EMAILS:", adminEmails);
           if (authError) {
             // If user already exists, try to get them again
             if (authError.message?.includes("already been registered")) {
-
               //as by chatgpt replace retryUsers with retryData
-              
+
               const { data: retryData, error: retryError } =
                 await serviceSupabase.auth.admin.listUsers();
-              
-              const retryUser = retryData?.users?.find(user => user.email === adminEmail)
-              
+
+              const retryUser = retryData?.users?.find(
+                (user) => user.email === adminEmail,
+              );
+
               if (retryUser && !retryError) {
                 userId = retryUser.id;
                 console.log("Found existing admin user after creation attempt");
@@ -131,19 +131,21 @@ console.log("ENV ADMIN_EMAILS:", adminEmails);
           }
         }
 
-        // Update profile to admin role
-        const { error: profileError } = await supabase.from("profiles").upsert({
-          id: userId,
-          email: adminEmail,
-          full_name: process.env.ADMIN_NAME || "System Administrator",
-          role: "admin",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-         //added chatgpt
-          console.log("ENV Email:", adminEmail);
-          console.log("ENV Password:", adminPassword);
-    
+        // Update profile to admin role using service client to bypass RLS
+        const { error: profileError } = await serviceSupabase
+          .from("profiles")
+          .upsert({
+            id: userId,
+            email: adminEmail,
+            full_name: process.env.ADMIN_NAME || "System Administrator",
+            role: "admin",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        //added chatgpt
+        console.log("ENV Email:", adminEmail);
+        console.log("ENV Password:", adminPassword);
+
         if (profileError) {
           console.error("Error creating admin profile:", profileError);
         }
