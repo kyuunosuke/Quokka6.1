@@ -47,9 +47,15 @@ export default function AdminLogin() {
     setLoading(true);
     setError("");
 
+    console.log("🔐 Starting login process...");
+    console.log("📧 Email:", email);
+    console.log("🔧 Pre-configured auth:", isPreConfiguredAuth);
+
     try {
       // If using pre-configured auth, validate against environment variables
       if (isPreConfiguredAuth) {
+        console.log("🔍 Validating pre-configured credentials...");
+
         const response = await fetch("/api/admin/validate-credentials", {
           method: "POST",
           headers: {
@@ -59,53 +65,140 @@ export default function AdminLogin() {
         });
 
         const result = await response.json();
+        console.log("📋 Validation response:", {
+          status: response.status,
+          result,
+        });
 
         if (!response.ok || !result.valid) {
-          setError("Invalid admin credentials");
+          const errorMsg = result.error || "Invalid admin credentials";
+          console.error("❌ Credential validation failed:", errorMsg);
+          setError(errorMsg);
           return;
         }
+
+        console.log("✅ Credentials validated, attempting Supabase auth...");
 
         // Create a session for the pre-configured admin
         const { data, error } = await supabase.auth.signInWithPassword({
           email: result.adminEmail,
-          password: result.tempPassword || password,
+          password: password, // Use the original password, not tempPassword
         });
 
+        console.log("🔑 Supabase auth result:", { data: !!data, error });
+
         if (error) {
+          console.error("❌ Supabase authentication failed:", error);
           setError(
-            "Authentication failed. Please contact system administrator.",
+            `Authentication failed: ${error.message}. Please contact system administrator.`,
           );
           return;
         }
+
+        if (!data?.user) {
+          console.error("❌ No user data returned from Supabase");
+          setError("Authentication failed - no user data received");
+          return;
+        }
+
+        console.log("👤 User authenticated:", data.user.id);
+
+        // Verify admin role after authentication
+        console.log("🔍 Checking admin role...");
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", data.user.id)
+          .single();
+
+        console.log("👥 Profile check:", { profile, profileError });
+
+        if (profileError) {
+          console.error("❌ Error fetching profile:", profileError);
+          setError("Failed to verify admin privileges");
+          await supabase.auth.signOut();
+          return;
+        }
+
+        if (profile?.role !== "admin") {
+          console.error("❌ User does not have admin role:", profile?.role);
+          setError("Access denied. Admin privileges required.");
+          await supabase.auth.signOut();
+          return;
+        }
+
+        console.log("✅ Admin role verified, redirecting...");
       } else {
+        console.log("🔍 Using standard Supabase authentication...");
+
         // Standard Supabase authentication
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
+        console.log("🔑 Standard auth result:", { data: !!data, error });
+
         if (error) {
+          console.error("❌ Standard authentication failed:", error);
           setError(error.message);
           return;
         }
 
+        if (!data?.user) {
+          console.error("❌ No user data returned from standard auth");
+          setError("Authentication failed - no user data received");
+          return;
+        }
+
         // Check if user has admin role
-        const { data: profile } = await supabase
+        console.log("🔍 Checking admin role for standard auth...");
+        const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("role")
           .eq("id", data.user.id)
           .single();
 
+        console.log("👥 Standard auth profile check:", {
+          profile,
+          profileError,
+        });
+
+        if (profileError) {
+          console.error(
+            "❌ Error fetching profile for standard auth:",
+            profileError,
+          );
+          setError("Failed to verify admin privileges");
+          await supabase.auth.signOut();
+          return;
+        }
+
         if (profile?.role !== "admin") {
+          console.error(
+            "❌ Standard auth user does not have admin role:",
+            profile?.role,
+          );
           setError("Access denied. Admin privileges required.");
           await supabase.auth.signOut();
           return;
         }
+
+        console.log("✅ Standard auth admin role verified, redirecting...");
       }
 
-      router.push("/admin");
+      console.log("🚀 Redirecting to /admin...");
+
+      // Add a small delay to ensure session is properly set
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Force a hard navigation to ensure middleware picks up the session
+      window.location.href = "/admin";
     } catch (err) {
-      setError("An unexpected error occurred");
+      console.error("💥 Unexpected error during login:", err);
+      setError(
+        `An unexpected error occurred: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
     } finally {
       setLoading(false);
     }
