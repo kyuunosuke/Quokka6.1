@@ -495,6 +495,10 @@ export type Database = {
         }
         Returns: string
       }
+      is_admin_user: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       validate_admin_credentials: {
         Args: { check_email: string; check_password: string }
         Returns: boolean
