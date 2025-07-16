@@ -1,3 +1,5 @@
+"use client";
+
 import Footer from "@/components/footer";
 import Hero from "@/components/hero";
 import Navbar from "@/components/navbar";
@@ -25,38 +27,144 @@ import {
   Clock,
   MoreHorizontal,
 } from "lucide-react";
-import { createClient } from "../../supabase/server";
+import { createClient } from "../../supabase/client";
+
+// Component for expandable text
+function ExpandableText({
+  text,
+  maxLength = 150,
+}: {
+  text: string;
+  maxLength?: number;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const shouldTruncate = text.length > maxLength;
+  const displayText =
+    shouldTruncate && !isExpanded ? text.slice(0, maxLength) + "..." : text;
+
+  return (
+    <div>
+      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+        {displayText}
+      </p>
+      {shouldTruncate && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+          className="mt-2 flex items-center gap-1 text-purple-600 hover:text-purple-700 text-sm font-medium transition-colors"
+        >
+          {isExpanded ? (
+            <>
+              Show less <ChevronUp className="w-4 h-4" />
+            </>
+          ) : (
+            <>
+              Show more <ChevronDown className="w-4 h-4" />
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Component for competition details card
+function CompetitionDetailsCard({
+  requirements,
+  rules,
+}: {
+  requirements: string[];
+  rules: string;
+}) {
+  return (
+    <Card className="bg-neuro-light shadow-neuro overflow-hidden w-full h-full">
+      <CardContent className="p-6 space-y-6 h-full overflow-y-auto">
+        {/* Requirements Section */}
+        <div>
+          <h4 className="font-semibold text-lg mb-4 text-purple-600 flex items-center gap-2">
+            <Target className="w-5 h-5" />
+            Requirements
+          </h4>
+          <div className="space-y-3">
+            {requirements.map((requirement, index) => (
+              <div key={index} className="flex items-start gap-3">
+                <div className="w-2 h-2 bg-purple-600 rounded-full mt-2 flex-shrink-0" />
+                <ExpandableText text={requirement} maxLength={100} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Rules Section */}
+        <div className="border-t pt-6">
+          <h4 className="font-semibold text-lg mb-4 text-blue-600 flex items-center gap-2">
+            <Trophy className="w-5 h-5" />
+            Rules
+          </h4>
+          <ExpandableText text={rules} maxLength={200} />
+        </div>
+      </CardContent>
+
+      <CardFooter className="flex gap-2 p-4 border-t bg-white/50">
+        <Button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+          Enter Competition
+        </Button>
+        <Button variant="outline" size="icon">
+          <Star className="w-4 h-4" />
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
-export default async function Home() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default function Home() {
+  const [competitions, setCompetitions] = useState(null);
+  const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
 
-  // Fetch competitions from Supabase
-  let competitions = null;
-  let error = null;
+  useEffect(() => {
+    async function fetchData() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setUser(user);
 
-  try {
-    const result = await supabase
-      .from("competitions")
-      .select(
-        `
-        *,
-        competition_requirements(*),
-        competition_rules(*)
-      `,
-      )
-      .eq("status", "active")
-      .order("created_at", { ascending: false });
+      // Fetch competitions from Supabase
+      try {
+        const result = await supabase
+          .from("competitions")
+          .select(
+            `
+            *,
+            competition_requirements_selected(
+              requirement_option_id,
+              requirement_options(
+                id,
+                name,
+                description
+              )
+            )
+          `,
+          )
+          .eq("status", "active")
+          .order("created_at", { ascending: false });
 
-    competitions = result.data;
-    error = result.error;
-  } catch (fetchError) {
-    console.error("Error fetching competitions:", fetchError);
-    error = fetchError;
-  }
+        setCompetitions(result.data);
+        setError(result.error);
+      } catch (fetchError) {
+        console.error("Error fetching competitions:", fetchError);
+        setError(fetchError);
+      }
+    }
+
+    fetchData();
+  }, []);
 
   if (error) {
     console.error("Error fetching competitions:", error);
@@ -275,31 +383,37 @@ export default async function Home() {
                     }
                   };
 
-                  // Safe requirements formatting
-                  const formatRequirements = (requirements: any) => {
+                  // Safe requirements formatting from requirement_options table - each as single sentence
+                  const formatRequirements = (requirementsSelected: any) => {
                     try {
                       if (
-                        !requirements ||
-                        requirements === null ||
-                        requirements === undefined ||
-                        !Array.isArray(requirements) ||
-                        requirements.length === 0
+                        !requirementsSelected ||
+                        requirementsSelected === null ||
+                        requirementsSelected === undefined ||
+                        !Array.isArray(requirementsSelected) ||
+                        requirementsSelected.length === 0
                       ) {
-                        return "Requirements will be provided upon registration.";
+                        return [
+                          "Requirements will be provided upon registration.",
+                        ];
                       }
 
-                      const validRequirements = requirements
+                      const validRequirements = requirementsSelected
                         .filter(
                           (req) =>
-                            req && typeof req === "object" && req !== null,
+                            req &&
+                            typeof req === "object" &&
+                            req !== null &&
+                            req.requirement_options &&
+                            typeof req.requirement_options === "object",
                         )
                         .map((req) => {
                           try {
-                            return (
-                              req.requirement_description ||
-                              req.description ||
-                              ""
-                            );
+                            const option = req.requirement_options;
+                            let text = option.description || option.name || "";
+                            // Ensure single sentence - remove extra periods and add one at the end
+                            text = text.trim().replace(/\.+$/, "") + ".";
+                            return text;
                           } catch {
                             return "";
                           }
@@ -312,8 +426,8 @@ export default async function Home() {
                         );
 
                       return validRequirements.length > 0
-                        ? validRequirements.join(" ")
-                        : "Requirements will be provided upon registration.";
+                        ? validRequirements
+                        : ["Requirements will be provided upon registration."];
                     } catch (error) {
                       console.warn(
                         "Error formatting requirements for competition",
@@ -321,47 +435,26 @@ export default async function Home() {
                         ":",
                         error,
                       );
-                      return "Requirements will be provided upon registration.";
+                      return [
+                        "Requirements will be provided upon registration.",
+                      ];
                     }
                   };
 
-                  // Safe rules formatting
-                  const formatRules = (rules: any) => {
+                  // Safe rules formatting from competitions.rules field
+                  const formatRules = (rulesText: any) => {
                     try {
                       if (
-                        !rules ||
-                        rules === null ||
-                        rules === undefined ||
-                        !Array.isArray(rules) ||
-                        rules.length === 0
+                        !rulesText ||
+                        rulesText === null ||
+                        rulesText === undefined ||
+                        typeof rulesText !== "string" ||
+                        rulesText.trim().length === 0
                       ) {
                         return "Rules will be provided upon registration.";
                       }
 
-                      const validRules = rules
-                        .filter(
-                          (rule) =>
-                            rule && typeof rule === "object" && rule !== null,
-                        )
-                        .map((rule) => {
-                          try {
-                            return (
-                              rule.rule_description || rule.description || ""
-                            );
-                          } catch {
-                            return "";
-                          }
-                        })
-                        .filter(
-                          (desc) =>
-                            desc &&
-                            typeof desc === "string" &&
-                            desc.trim().length > 0,
-                        );
-
-                      return validRules.length > 0
-                        ? validRules.join(" ")
-                        : "Rules will be provided upon registration.";
+                      return rulesText.trim();
                     } catch (error) {
                       console.warn(
                         "Error formatting rules for competition",
@@ -429,9 +522,9 @@ export default async function Home() {
                         ? competition.current_participants
                         : 0,
                     requirements: formatRequirements(
-                      competition.competition_requirements,
+                      competition.competition_requirements_selected,
                     ),
-                    rules: formatRules(competition.competition_rules),
+                    rules: formatRules(competition.rules),
                   };
 
                   return (
@@ -518,54 +611,10 @@ export default async function Home() {
                         </Card>
                       }
                       backContent={
-                        <Card className="bg-neuro-light shadow-neuro overflow-hidden w-full h-full">
-                          <CardHeader className="text-center">
-                            <CardTitle className="text-xl mb-2">
-                              {formattedCompetition.title}
-                            </CardTitle>
-                            <CardDescription className="text-gray-600">
-                              Competition Details
-                            </CardDescription>
-                          </CardHeader>
-
-                          <CardContent className="space-y-6 h-full flex flex-col justify-center">
-                            <div>
-                              <h4 className="font-semibold text-lg mb-3 text-purple-600 flex items-center gap-2">
-                                <Target className="w-5 h-5" />
-                                Requirements
-                              </h4>
-                              <p className="text-sm text-gray-700 leading-relaxed">
-                                {formattedCompetition.requirements}
-                              </p>
-                            </div>
-
-                            <div className="border-t pt-4">
-                              <h4 className="font-semibold text-lg mb-3 text-blue-600 flex items-center gap-2">
-                                <Trophy className="w-5 h-5" />
-                                Rules
-                              </h4>
-                              <p className="text-sm text-gray-700 leading-relaxed">
-                                {formattedCompetition.rules}
-                              </p>
-                            </div>
-                          </CardContent>
-
-                          <CardFooter className="flex gap-2">
-                            <Button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                              Enter Competition
-                            </Button>
-                            <Button variant="outline" size="icon">
-                              <Star className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="pointer-events-none"
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </CardFooter>
-                        </Card>
+                        <CompetitionDetailsCard
+                          requirements={formattedCompetition.requirements}
+                          rules={formattedCompetition.rules}
+                        />
                       }
                     />
                   );

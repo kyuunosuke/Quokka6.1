@@ -67,8 +67,15 @@ function getRequirementsText(competition: Competition): string {
 }
 
 // Helper function to get rules text
-function getRulesText(): string {
-  return "Please follow all competition guidelines and submit original work only.";
+function getRulesText(competition: Competition): string {
+  try {
+    return (
+      competition?.rules?.trim() ||
+      "Please follow all competition guidelines and submit original work only."
+    );
+  } catch {
+    return "Please follow all competition guidelines and submit original work only.";
+  }
 }
 
 // Helper function to safely get string value
@@ -105,15 +112,33 @@ export default async function CompetitionsHome() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Fetch active competitions from Supabase
+  // Fetch competitions from Supabase (try all statuses first to debug)
   let competitions: Competition[] = [];
   let error = null;
+  let debugInfo = "";
 
   try {
+    // First, let's see what competitions exist with any status
+    const { data: allData, error: allError } = await supabase
+      .from("competitions")
+      .select("id, title, status, created_at")
+      .order("created_at", { ascending: false });
+
+    if (allError) {
+      console.error("Error fetching all competitions:", allError);
+      debugInfo = `Debug: Error fetching competitions - ${allError.message}`;
+    } else {
+      const allCompetitions = allData || [];
+      debugInfo = `Debug: Found ${allCompetitions.length} total competitions. Statuses: ${[...new Set(allCompetitions.map((c) => c.status))].join(", ")}`;
+      console.log("All competitions:", allCompetitions);
+    }
+
+    // Now fetch the actual competition data
+    // Try multiple status values that might be used
     const { data, error: fetchError } = await supabase
       .from("competitions")
       .select("*")
-      .eq("status", "active")
+      .in("status", ["active", "open", "published", "live"])
       .order("created_at", { ascending: false });
 
     if (fetchError) {
@@ -121,6 +146,21 @@ export default async function CompetitionsHome() {
       error = fetchError.message;
     } else {
       competitions = data || [];
+      console.log("Fetched competitions:", competitions);
+    }
+
+    // If no competitions found with specific statuses, try fetching all
+    if (competitions.length === 0 && !fetchError) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("competitions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (!fallbackError && fallbackData) {
+        competitions = fallbackData;
+        debugInfo += ` | Fallback: Using all competitions (${competitions.length} found)`;
+      }
     }
   } catch (err) {
     console.error("Unexpected error:", err);
@@ -288,6 +328,12 @@ export default async function CompetitionsHome() {
             </div>
           )}
 
+          {debugInfo && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+              <p className="text-blue-800 text-sm">{debugInfo}</p>
+            </div>
+          )}
+
           {(!Array.isArray(competitions) || competitions.length === 0) &&
           !error ? (
             <div className="text-center py-12">
@@ -423,22 +469,22 @@ export default async function CompetitionsHome() {
                               </Badge>
                             </div>
 
-                            {/* Expandable Details - Initially Hidden */}
-                            <div className="hidden group-hover:block space-y-3 pt-4 border-t">
+                            {/* Requirements and Rules - Always Visible */}
+                            <div className="space-y-3 pt-4 border-t">
                               <div>
-                                <h4 className="font-semibold text-sm mb-1">
+                                <h4 className="font-semibold text-sm mb-1 text-purple-700">
                                   Requirements:
                                 </h4>
-                                <p className="text-xs text-gray-600">
+                                <p className="text-xs text-gray-600 line-clamp-2">
                                   {getRequirementsText(competition)}
                                 </p>
                               </div>
                               <div>
-                                <h4 className="font-semibold text-sm mb-1">
+                                <h4 className="font-semibold text-sm mb-1 text-purple-700">
                                   Rules:
                                 </h4>
-                                <p className="text-xs text-gray-600">
-                                  {getRulesText()}
+                                <p className="text-xs text-gray-600 line-clamp-2">
+                                  {getRulesText(competition)}
                                 </p>
                               </div>
                             </div>
