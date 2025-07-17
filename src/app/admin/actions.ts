@@ -42,6 +42,16 @@ export async function createCompetition(
     };
   }
 
+  // Debug: Log the featured field value
+  const featuredValue = formData.get("featured");
+  console.log(
+    "🔍 DEBUG - Featured field value:",
+    featuredValue,
+    "Type:",
+    typeof featuredValue,
+  );
+  console.log("🔍 DEBUG - Featured boolean result:", featuredValue === "true");
+
   const competitionData = {
     title: formData.get("title") as string,
     description: formData.get("description") as string,
@@ -65,12 +75,18 @@ export async function createCompetition(
     organizer_name: formData.get("organizer_name") as string,
     organizer_email: formData.get("organizer_email") as string,
     organizer_website: formData.get("organizer_website") as string,
+    terms_conditions_url: formData.get("terms_conditions_url") as string,
     thumbnail_url: formData.get("thumbnail_url") as string,
     banner_url: formData.get("banner_url") as string,
     status: (formData.get("status") as string) || "draft",
-    featured: formData.get("featured") === "true",
+    featured: featuredValue === "true",
     organizer_id: user.id,
   };
+
+  console.log(
+    "🔍 DEBUG - Competition data featured field:",
+    competitionData.featured,
+  );
 
   const { data: competition, error } = await supabase
     .from("competitions")
@@ -144,6 +160,19 @@ export async function updateCompetition(
     };
   }
 
+  // Debug: Log the featured field value for update
+  const featuredValue = formData.get("featured");
+  console.log(
+    "🔍 DEBUG UPDATE - Featured field value:",
+    featuredValue,
+    "Type:",
+    typeof featuredValue,
+  );
+  console.log(
+    "🔍 DEBUG UPDATE - Featured boolean result:",
+    featuredValue === "true",
+  );
+
   const competitionData = {
     title: formData.get("title") as string,
     description: formData.get("description") as string,
@@ -167,12 +196,18 @@ export async function updateCompetition(
     organizer_name: formData.get("organizer_name") as string,
     organizer_email: formData.get("organizer_email") as string,
     organizer_website: formData.get("organizer_website") as string,
+    terms_conditions_url: formData.get("terms_conditions_url") as string,
     thumbnail_url: formData.get("thumbnail_url") as string,
     banner_url: formData.get("banner_url") as string,
     status: formData.get("status") as string,
-    featured: formData.get("featured") === "true",
+    featured: featuredValue === "true",
     updated_at: new Date().toISOString(),
   };
+
+  console.log(
+    "🔍 DEBUG UPDATE - Competition data featured field:",
+    competitionData.featured,
+  );
 
   const { error } = await supabase
     .from("competitions")

@@ -15,6 +15,20 @@ import {
 } from "@/components/ui/card";
 import { FlipCard } from "@/components/ui/flip-card";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   ArrowUpRight,
   Trophy,
   Target,
@@ -23,7 +37,6 @@ import {
   Calendar,
   DollarSign,
   Filter,
-  Heart,
   Clock,
   MoreHorizontal,
 } from "lucide-react";
@@ -108,8 +121,14 @@ function CompetitionDetailsCard({
       </CardContent>
 
       <CardFooter className="flex gap-2 p-4 border-t bg-white/50">
-        <Button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-          Enter Competition
+        <Button
+          className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+          onClick={() => {
+            // This will be handled by the parent component's data
+            console.log("Go to competition clicked");
+          }}
+        >
+          Go to competition
         </Button>
         <Button variant="outline" size="icon">
           <Star className="w-4 h-4" />
@@ -121,11 +140,71 @@ function CompetitionDetailsCard({
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   const [competitions, setCompetitions] = useState(null);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const [savedCompetitions, setSavedCompetitions] = useState(new Set());
+  const [savingCompetition, setSavingCompetition] = useState(null);
+  const [prizeDialogOpen, setPrizeDialogOpen] = useState(false);
+  const [selectedPrizeDescription, setSelectedPrizeDescription] = useState("");
+  const router = useRouter();
+
+  const handleSaveCompetition = async (competitionId: string) => {
+    if (!user) {
+      // Redirect to sign in if not authenticated
+      router.push("/sign-in");
+      return;
+    }
+
+    if (savedCompetitions.has(competitionId)) {
+      // Competition is already saved, remove it
+      setSavingCompetition(competitionId);
+      try {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from("saved_competitions")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("competition_id", competitionId);
+
+        if (error) throw error;
+
+        // Update local state
+        setSavedCompetitions((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(competitionId);
+          return newSet;
+        });
+      } catch (error) {
+        console.error("Error removing competition from saved:", error);
+      } finally {
+        setSavingCompetition(null);
+      }
+    } else {
+      // Save the competition
+      setSavingCompetition(competitionId);
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.from("saved_competitions").insert({
+          user_id: user.id,
+          competition_id: competitionId,
+          saved_at: new Date().toISOString(),
+        });
+
+        if (error) throw error;
+
+        // Update local state
+        setSavedCompetitions((prev) => new Set([...prev, competitionId]));
+      } catch (error) {
+        console.error("Error saving competition:", error);
+      } finally {
+        setSavingCompetition(null);
+      }
+    }
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -157,6 +236,21 @@ export default function Home() {
 
         setCompetitions(result.data);
         setError(result.error);
+
+        // If user is authenticated, fetch their saved competitions
+        if (user) {
+          const savedResult = await supabase
+            .from("saved_competitions")
+            .select("competition_id")
+            .eq("user_id", user.id);
+
+          if (savedResult.data) {
+            const savedIds = new Set(
+              savedResult.data.map((item) => item.competition_id),
+            );
+            setSavedCompetitions(savedIds);
+          }
+        }
       } catch (fetchError) {
         console.error("Error fetching competitions:", fetchError);
         setError(fetchError);
@@ -502,6 +596,18 @@ export default function Home() {
                       !isNaN(competition.prize_amount)
                         ? `${competition.prize_amount.toLocaleString()}`
                         : "TBD",
+                    prizeDescription:
+                      competition.prize_description &&
+                      typeof competition.prize_description === "string" &&
+                      competition.prize_description.trim()
+                        ? competition.prize_description.trim()
+                        : "No prize description available",
+                    termsConditionsUrl:
+                      competition.terms_conditions_url &&
+                      typeof competition.terms_conditions_url === "string" &&
+                      competition.terms_conditions_url.trim()
+                        ? competition.terms_conditions_url.trim()
+                        : null,
                     deadline: formatDeadline(competition.submission_deadline),
                     category:
                       competition.category &&
@@ -515,43 +621,54 @@ export default function Home() {
                       competition.difficulty_level.trim()
                         ? competition.difficulty_level.trim()
                         : "Not specified",
-                    participants:
-                      competition.current_participants &&
-                      typeof competition.current_participants === "number" &&
-                      !isNaN(competition.current_participants)
-                        ? competition.current_participants
-                        : 0,
+                    organizer:
+                      competition.organizer_name &&
+                      typeof competition.organizer_name === "string" &&
+                      competition.organizer_name.trim()
+                        ? competition.organizer_name.trim()
+                        : competition.organizer &&
+                            typeof competition.organizer === "string" &&
+                            competition.organizer.trim()
+                          ? competition.organizer.trim()
+                          : "Unknown Organizer",
                     requirements: formatRequirements(
                       competition.competition_requirements_selected,
                     ),
                     rules: formatRules(competition.rules),
+                    featured: competition.featured === true,
                   };
 
                   return (
                     <FlipCard
                       key={`competition-${formattedCompetition.id}-${index}`}
-                      className="w-full h-[500px]"
+                      className={`w-full ${formattedCompetition.featured ? "h-[550px]" : "h-[500px]"}`}
                       frontContent={
                         <Card className="bg-neuro-light shadow-neuro hover:shadow-neuro-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden w-full h-full">
+                          {formattedCompetition.featured && (
+                            <CardHeader className="bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 text-white py-2 px-4">
+                              <div className="flex items-center justify-center gap-2">
+                                <Star className="w-5 h-5 fill-current" />
+                                <span className="font-bold text-sm">
+                                  FEATURED COMPETITION
+                                </span>
+                                <Star className="w-5 h-5 fill-current" />
+                              </div>
+                            </CardHeader>
+                          )}
                           <div className="relative">
                             <img
                               src={formattedCompetition.thumbnail}
                               alt={formattedCompetition.title}
                               className="w-full h-48 object-cover"
                             />
-                            <div className="absolute top-4 left-4">
+                            <div className="absolute top-4 left-4 flex gap-2">
                               <Badge className="bg-white/90 text-gray-900 hover:bg-white">
                                 {formattedCompetition.category || "Category"}
                               </Badge>
-                            </div>
-                            <div className="absolute top-4 right-4">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="bg-white/90 hover:bg-white"
-                              >
-                                <Heart className="w-4 h-4" />
-                              </Button>
+                              <Badge className="bg-blue-100/90 text-blue-800 hover:bg-blue-100">
+                                {formattedCompetition.difficulty ||
+                                  "Not specified"}
+                              </Badge>
                             </div>
                           </div>
 
@@ -578,35 +695,122 @@ export default function Home() {
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between text-sm text-gray-600">
+                            <div className="flex items-center text-sm text-gray-600">
                               <div className="flex items-center gap-1">
                                 <Users className="w-4 h-4" />
-                                <span>
-                                  {formattedCompetition.participants}{" "}
-                                  participants
-                                </span>
+                                <span>by {formattedCompetition.organizer}</span>
                               </div>
-                              <Badge variant="outline" className="text-xs">
-                                {formattedCompetition.difficulty ||
-                                  "Not specified"}
-                              </Badge>
                             </div>
                           </CardContent>
 
-                          <CardFooter className="flex gap-2">
-                            <Button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                              Enter Competition
-                            </Button>
-                            <Button variant="outline" size="icon">
-                              <Star className="w-4 h-4" />
-                            </Button>
+                          <CardFooter
+                            className="flex gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <Button
-                              variant="outline"
-                              size="icon"
-                              className="pointer-events-none"
+                              className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                              onClick={() => {
+                                const bannerUrl = competition.banner_url;
+                                if (
+                                  bannerUrl &&
+                                  typeof bannerUrl === "string" &&
+                                  bannerUrl.trim()
+                                ) {
+                                  window.open(bannerUrl.trim(), "_blank");
+                                }
+                              }}
                             >
-                              <MoreHorizontal className="w-4 h-4" />
+                              Go to competition
                             </Button>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() =>
+                                      handleSaveCompetition(
+                                        formattedCompetition.id,
+                                      )
+                                    }
+                                    disabled={
+                                      savingCompetition ===
+                                      formattedCompetition.id
+                                    }
+                                    className={
+                                      savedCompetitions.has(
+                                        formattedCompetition.id,
+                                      )
+                                        ? "bg-yellow-100 text-yellow-600 border-yellow-300"
+                                        : ""
+                                    }
+                                  >
+                                    {savingCompetition ===
+                                    formattedCompetition.id ? (
+                                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                    ) : (
+                                      <Star
+                                        className={`w-4 h-4 ${savedCompetitions.has(formattedCompetition.id) ? "fill-current" : ""}`}
+                                      />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>
+                                    {savedCompetitions.has(
+                                      formattedCompetition.id,
+                                    )
+                                      ? "Remove from saved competitions"
+                                      : "Save to my competitions"}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                  <DialogTitle>Prize Description</DialogTitle>
+                                  <DialogDescription>
+                                    Details about the prize for this competition
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="mt-4 space-y-4">
+                                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+                                    {formattedCompetition.prizeDescription}
+                                  </p>
+                                  {formattedCompetition.termsConditionsUrl && (
+                                    <div className="pt-3 border-t">
+                                      <p className="text-sm font-medium text-gray-900 mb-2">
+                                        Terms & Conditions
+                                      </p>
+                                      <a
+                                        href={
+                                          formattedCompetition.termsConditionsUrl
+                                        }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm text-blue-600 hover:text-blue-800 underline break-all"
+                                      >
+                                        {
+                                          formattedCompetition.termsConditionsUrl
+                                        }
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           </CardFooter>
                         </Card>
                       }

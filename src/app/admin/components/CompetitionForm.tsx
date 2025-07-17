@@ -64,6 +64,7 @@ export default function CompetitionForm({
   const [newRequirementDescription, setNewRequirementDescription] =
     useState("");
   const [addingRequirement, setAddingRequirement] = useState(false);
+  const [isFeatured, setIsFeatured] = useState(competition?.featured || false);
 
   // Initialize with a function to avoid calling getCurrentDateWithMidnight during render
   const [endDate, setEndDate] = useState(() => {
@@ -202,10 +203,26 @@ export default function CompetitionForm({
         formData.append("requirements", reqId);
       });
 
+      // Handle featured checkbox explicitly
+      console.log("🔍 DEBUG FORM - isFeatured state:", isFeatured);
+      console.log(
+        "🔍 DEBUG FORM - Setting featured to:",
+        isFeatured.toString(),
+      );
+      formData.set("featured", isFeatured.toString());
+
+      // Verify the form data was set correctly
+      console.log(
+        "🔍 DEBUG FORM - FormData featured value:",
+        formData.get("featured"),
+      );
+
       let result;
       if (isEditing && competition) {
+        console.log("🔍 DEBUG FORM - Updating competition:", competition.id);
         result = await updateCompetition(competition.id, formData);
       } else {
+        console.log("🔍 DEBUG FORM - Creating new competition");
         result = await createCompetition(formData);
       }
 
@@ -617,6 +634,16 @@ export default function CompetitionForm({
                 />
               </div>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="terms_conditions_url">Terms & Conditions</Label>
+              <Input
+                id="terms_conditions_url"
+                name="terms_conditions_url"
+                type="url"
+                defaultValue={competition?.terms_conditions_url || ""}
+                placeholder="https://example.com/terms"
+              />
+            </div>
           </div>
 
           {/* Media & Status */}
@@ -670,8 +697,10 @@ export default function CompetitionForm({
               <div className="flex items-center space-x-2 pt-8">
                 <Checkbox
                   id="featured"
-                  name="featured"
-                  defaultChecked={competition?.featured || false}
+                  checked={isFeatured}
+                  onCheckedChange={(checked) =>
+                    setIsFeatured(checked as boolean)
+                  }
                 />
                 <Label htmlFor="featured">Featured Competition</Label>
               </div>

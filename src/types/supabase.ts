@@ -313,6 +313,7 @@ export type Database = {
           subcategory: string | null
           submission_deadline: string
           tags: string[] | null
+          terms_conditions_url: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string | null
@@ -349,6 +350,7 @@ export type Database = {
           subcategory?: string | null
           submission_deadline: string
           tags?: string[] | null
+          terms_conditions_url?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string | null
@@ -385,6 +387,7 @@ export type Database = {
           subcategory?: string | null
           submission_deadline?: string
           tags?: string[] | null
+          terms_conditions_url?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string | null
