@@ -145,7 +145,7 @@ import { useRouter } from "next/navigation";
 export default function Home() {
   const [competitions, setCompetitions] = useState<any[] | null>(null);
   const [error, setError] = useState<any | null>(null);
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [savedCompetitions, setSavedCompetitions] = useState<Set<string>>(
     new Set(),
   );
