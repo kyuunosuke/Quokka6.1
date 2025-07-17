@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { createClient } from "../../supabase/client";
-import { User } from "@supabase/supabase-js";
+import { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "./ui/button";
 import { User, UserCircle } from "lucide-react";
 import UserProfile from "./user-profile";
 import { useState, useEffect } from "react";
 
 export default function Navbar() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
