@@ -141,11 +141,12 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { User } from "@supabase/supabase-js";
 
 export default function Home() {
   const [competitions, setCompetitions] = useState<any[] | null>(null);
   const [error, setError] = useState<any | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [savedCompetitions, setSavedCompetitions] = useState<Set<string>>(
     new Set(),
   );
