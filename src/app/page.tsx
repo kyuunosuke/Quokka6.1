@@ -143,11 +143,15 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const [competitions, setCompetitions] = useState(null);
-  const [error, setError] = useState(null);
-  const [user, setUser] = useState(null);
-  const [savedCompetitions, setSavedCompetitions] = useState(new Set());
-  const [savingCompetition, setSavingCompetition] = useState(null);
+  const [competitions, setCompetitions] = useState<any[] | null>(null);
+  const [error, setError] = useState<any | null>(null);
+  const [user, setUser] = useState<any | null>(null);
+  const [savedCompetitions, setSavedCompetitions] = useState<Set<string>>(
+    new Set(),
+  );
+  const [savingCompetition, setSavingCompetition] = useState<string | null>(
+    null,
+  );
   const [prizeDialogOpen, setPrizeDialogOpen] = useState(false);
   const [selectedPrizeDescription, setSelectedPrizeDescription] = useState("");
   const router = useRouter();
