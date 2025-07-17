@@ -211,7 +211,10 @@ export default function CompetitionModule({ filters }: CompetitionModuleProps) {
                 Fill in the details to create a new competition.
               </DialogDescription>
             </DialogHeader>
-            <CompetitionForm onClose={() => setShowForm(false)} />
+            <CompetitionForm
+              onClose={() => setShowForm(false)}
+              onSuccess={() => fetchCompetitions()}
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -435,8 +438,8 @@ export default function CompetitionModule({ filters }: CompetitionModuleProps) {
               onClose={() => {
                 setShowEditForm(false);
                 setSelectedCompetition(null);
-                fetchCompetitions();
               }}
+              onSuccess={() => fetchCompetitions()}
             />
           )}
         </DialogContent>

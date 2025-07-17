@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,41 +14,246 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { createCompetition, updateCompetition } from "../actions";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  createCompetition,
+  updateCompetition,
+  createRequirementOption,
+} from "../actions";
 import { Tables } from "@/types/supabase";
+import { useToast } from "@/components/ui/use-toast";
+import { createClient } from "../../../../supabase/client";
+import { Plus } from "lucide-react";
 
 type Competition = Tables<"competitions">;
+type RequirementOption = Tables<"requirement_options">;
 
 interface CompetitionFormProps {
   competition?: Competition;
   onClose: () => void;
+  onSuccess?: () => void;
 }
+
+// Helper function to get current date with 12:00 AM time
+const getCurrentDateWithMidnight = () => {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return now.toISOString().slice(0, 16);
+};
 
 export default function CompetitionForm({
   competition,
   onClose,
+  onSuccess,
 }: CompetitionFormProps) {
   const [loading, setLoading] = useState(false);
+  const [requirementOptions, setRequirementOptions] = useState<
+    RequirementOption[]
+  >([]);
+  const [selectedRequirements, setSelectedRequirements] = useState<string[]>(
+    [],
+  );
+  const [showAddRequirement, setShowAddRequirement] = useState(false);
+  const [newRequirementName, setNewRequirementName] = useState("");
+  const [newRequirementDescription, setNewRequirementDescription] =
+    useState("");
+  const [addingRequirement, setAddingRequirement] = useState(false);
+  const [isFeatured, setIsFeatured] = useState(competition?.featured || false);
+
+  // Initialize with a function to avoid calling getCurrentDateWithMidnight during render
+  const [endDate, setEndDate] = useState(() => {
+    if (competition?.end_date) {
+      return new Date(competition.end_date).toISOString().slice(0, 16);
+    }
+    return getCurrentDateWithMidnight();
+  });
+
+  const [submissionDeadline, setSubmissionDeadline] = useState(() => {
+    if (competition?.submission_deadline) {
+      return new Date(competition.submission_deadline)
+        .toISOString()
+        .slice(0, 16);
+    }
+    if (competition?.end_date) {
+      return new Date(competition.end_date).toISOString().slice(0, 16);
+    }
+    return getCurrentDateWithMidnight();
+  });
+  const [isSubmissionDeadlineModified, setIsSubmissionDeadlineModified] =
+    useState(false);
   const isEditing = !!competition;
+  const { toast } = useToast();
+  const supabase = createClient();
+
+  // Load requirement options and selected requirements
+  useEffect(() => {
+    const loadRequirements = async () => {
+      // Load all requirement options
+      const { data: options } = await supabase
+        .from("requirement_options")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
+
+      if (options) {
+        setRequirementOptions(options);
+      }
+
+      // Load selected requirements for existing competition
+      if (competition?.id) {
+        const { data: selected } = await supabase
+          .from("competition_requirements_selected")
+          .select("requirement_option_id")
+          .eq("competition_id", competition.id);
+
+        if (selected) {
+          setSelectedRequirements(selected.map((s) => s.requirement_option_id));
+        }
+      }
+    };
+
+    loadRequirements();
+  }, [competition?.id, supabase]);
+
+  // Update submission deadline when end date changes (unless manually modified)
+  useEffect(() => {
+    if (endDate && !isSubmissionDeadlineModified) {
+      setSubmissionDeadline(endDate);
+    }
+  }, [endDate, isSubmissionDeadlineModified]);
+
+  const handleRequirementToggle = (requirementId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedRequirements((prev) => [...prev, requirementId]);
+    } else {
+      setSelectedRequirements((prev) =>
+        prev.filter((id) => id !== requirementId),
+      );
+    }
+  };
+
+  const handleAddRequirement = async () => {
+    if (!newRequirementName.trim()) {
+      toast({
+        title: "Error",
+        description: "Requirement name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAddingRequirement(true);
+    try {
+      const formData = new FormData();
+      formData.append("name", newRequirementName.trim());
+      formData.append("description", newRequirementDescription.trim());
+
+      const result = await createRequirementOption(formData);
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: result.message,
+        });
+
+        // Reload requirement options
+        const { data: options } = await supabase
+          .from("requirement_options")
+          .select("*")
+          .eq("is_active", true)
+          .order("name");
+
+        if (options) {
+          setRequirementOptions(options);
+        }
+
+        setNewRequirementName("");
+        setNewRequirementDescription("");
+        setShowAddRequirement(false);
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error adding requirement:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add requirement option",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingRequirement(false);
+    }
+  };
 
   const handleSubmit = async (formData: FormData) => {
     setLoading(true);
     try {
+      // Add selected requirements to form data
+      selectedRequirements.forEach((reqId) => {
+        formData.append("requirements", reqId);
+      });
+
+      // Handle featured checkbox explicitly
+      console.log("🔍 DEBUG FORM - isFeatured state:", isFeatured);
+      console.log(
+        "🔍 DEBUG FORM - Setting featured to:",
+        isFeatured.toString(),
+      );
+      formData.set("featured", isFeatured.toString());
+
+      // Verify the form data was set correctly
+      console.log(
+        "🔍 DEBUG FORM - FormData featured value:",
+        formData.get("featured"),
+      );
+
+      let result;
       if (isEditing && competition) {
-        await updateCompetition(competition.id, formData);
+        console.log("🔍 DEBUG FORM - Updating competition:", competition.id);
+        result = await updateCompetition(competition.id, formData);
       } else {
-        await createCompetition(formData);
+        console.log("🔍 DEBUG FORM - Creating new competition");
+        result = await createCompetition(formData);
       }
-      onClose();
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: result.message,
+        });
+        onSuccess?.();
+        onClose();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || result.message,
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error("Error submitting form:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
+    <Card className="w-full max-w-[52.5rem] mx-auto">
       <CardHeader>
         <CardTitle>
           {isEditing ? "Edit Competition" : "Create New Competition"}
@@ -84,14 +289,126 @@ export default function CompetitionForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="detailed_description">
-                  Detailed Description
-                </Label>
+                <Label htmlFor="detailed_description">Entry Criteria</Label>
                 <Textarea
                   id="detailed_description"
                   name="detailed_description"
                   defaultValue={competition?.detailed_description || ""}
-                  placeholder="Detailed description with rules and requirements"
+                  placeholder="Additional entry criteria and information"
+                  rows={3}
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Requirements</Label>
+                  <Dialog
+                    open={showAddRequirement}
+                    onOpenChange={setShowAddRequirement}
+                  >
+                    <DialogTrigger asChild>
+                      <Button type="button" variant="outline" size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add New
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add New Requirement Option</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="new-req-name">
+                            Requirement Name *
+                          </Label>
+                          <Input
+                            id="new-req-name"
+                            value={newRequirementName}
+                            onChange={(e) =>
+                              setNewRequirementName(e.target.value)
+                            }
+                            placeholder="Enter requirement name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="new-req-desc">Description</Label>
+                          <Textarea
+                            id="new-req-desc"
+                            value={newRequirementDescription}
+                            onChange={(e) =>
+                              setNewRequirementDescription(e.target.value)
+                            }
+                            placeholder="Optional description"
+                            rows={3}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            onClick={handleAddRequirement}
+                            disabled={addingRequirement}
+                          >
+                            {addingRequirement
+                              ? "Adding..."
+                              : "Add Requirement"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setShowAddRequirement(false);
+                              setNewRequirementName("");
+                              setNewRequirementDescription("");
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto border rounded-md p-4">
+                  {requirementOptions.map((option) => (
+                    <div key={option.id} className="flex items-start space-x-3">
+                      <Checkbox
+                        id={`req-${option.id}`}
+                        checked={selectedRequirements.includes(option.id)}
+                        onCheckedChange={(checked) =>
+                          handleRequirementToggle(option.id, checked as boolean)
+                        }
+                      />
+                      <div className="flex-1">
+                        <Label
+                          htmlFor={`req-${option.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {option.name}
+                        </Label>
+                        {option.description && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {option.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {requirementOptions.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No requirement options available. Add some using the
+                      &quot;Add New&quot; button.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rules">Rules</Label>
+                <Textarea
+                  id="rules"
+                  name="rules"
+                  defaultValue={competition?.rules || ""}
+                  placeholder="Competition rules and guidelines"
                   rows={5}
                 />
               </div>
@@ -106,14 +423,12 @@ export default function CompetitionForm({
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Design & Art">Design & Art</SelectItem>
-                    <SelectItem value="Photography">Photography</SelectItem>
-                    <SelectItem value="Writing">Writing</SelectItem>
-                    <SelectItem value="Video & Film">Video & Film</SelectItem>
-                    <SelectItem value="Music & Audio">Music & Audio</SelectItem>
-                    <SelectItem value="Innovation">Innovation</SelectItem>
-                    <SelectItem value="Gaming">Gaming</SelectItem>
-                    <SelectItem value="Business">Business</SelectItem>
+                    <SelectItem value="Open (free)">Open (free)</SelectItem>
+                    <SelectItem value="Barrier (low)">Barrier (low)</SelectItem>
+                    <SelectItem value="Barrier (Medium)">
+                      Barrier (Medium)
+                    </SelectItem>
+                    <SelectItem value="Exclusive">Exclusive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -129,19 +444,17 @@ export default function CompetitionForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="difficulty_level">Difficulty Level *</Label>
+                <Label htmlFor="difficulty_level">Type of Game *</Label>
                 <Select
                   name="difficulty_level"
                   defaultValue={competition?.difficulty_level || ""}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select difficulty" />
+                    <SelectValue placeholder="Select game type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Beginner">Beginner</SelectItem>
-                    <SelectItem value="Intermediate">Intermediate</SelectItem>
-                    <SelectItem value="Advanced">Advanced</SelectItem>
-                    <SelectItem value="All Levels">All Levels</SelectItem>
+                    <SelectItem value="Game of Luck">Game of Luck</SelectItem>
+                    <SelectItem value="Game of Skill">Game of Skill</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -151,39 +464,42 @@ export default function CompetitionForm({
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Competition Details</h3>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="start_date">Start Date *</Label>
-                  <Input
-                    id="start_date"
-                    name="start_date"
-                    type="datetime-local"
-                    defaultValue={
-                      competition?.start_date
-                        ? new Date(competition.start_date)
-                            .toISOString()
-                            .slice(0, 16)
-                        : ""
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="end_date">End Date *</Label>
-                  <Input
-                    id="end_date"
-                    name="end_date"
-                    type="datetime-local"
-                    defaultValue={
-                      competition?.end_date
-                        ? new Date(competition.end_date)
-                            .toISOString()
-                            .slice(0, 16)
-                        : ""
-                    }
-                    required
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="start_date">Start Date *</Label>
+                <Input
+                  id="start_date"
+                  name="start_date"
+                  type="datetime-local"
+                  className="w-full min-w-0 pr-12"
+                  defaultValue={
+                    competition?.start_date
+                      ? new Date(competition.start_date)
+                          .toISOString()
+                          .slice(0, 16)
+                      : getCurrentDateWithMidnight()
+                  }
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="end_date">End Date *</Label>
+                <Input
+                  id="end_date"
+                  name="end_date"
+                  type="datetime-local"
+                  className="w-full min-w-0 pr-12"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  defaultValue={
+                    competition?.end_date
+                      ? new Date(competition.end_date)
+                          .toISOString()
+                          .slice(0, 16)
+                      : getCurrentDateWithMidnight()
+                  }
+                  required
+                />
               </div>
 
               <div className="space-y-2">
@@ -194,12 +510,22 @@ export default function CompetitionForm({
                   id="submission_deadline"
                   name="submission_deadline"
                   type="datetime-local"
+                  className="w-full min-w-0 pr-12"
+                  value={submissionDeadline}
+                  onChange={(e) => {
+                    setSubmissionDeadline(e.target.value);
+                    setIsSubmissionDeadlineModified(true);
+                  }}
                   defaultValue={
                     competition?.submission_deadline
                       ? new Date(competition.submission_deadline)
                           .toISOString()
                           .slice(0, 16)
-                      : ""
+                      : competition?.end_date
+                        ? new Date(competition.end_date)
+                            .toISOString()
+                            .slice(0, 16)
+                        : getCurrentDateWithMidnight()
                   }
                   required
                 />
@@ -221,7 +547,7 @@ export default function CompetitionForm({
                   <Label htmlFor="prize_currency">Currency</Label>
                   <Select
                     name="prize_currency"
-                    defaultValue={competition?.prize_currency || "USD"}
+                    defaultValue={competition?.prize_currency || "AUD"}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Currency" />
@@ -271,40 +597,6 @@ export default function CompetitionForm({
                   />
                 </div>
               </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="is_team_competition"
-                    name="is_team_competition"
-                    defaultChecked={competition?.is_team_competition || false}
-                  />
-                  <Label htmlFor="is_team_competition">Team Competition</Label>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="min_team_size">Min Team Size</Label>
-                    <Input
-                      id="min_team_size"
-                      name="min_team_size"
-                      type="number"
-                      defaultValue={competition?.min_team_size || "1"}
-                      min="1"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="max_team_size">Max Team Size</Label>
-                    <Input
-                      id="max_team_size"
-                      name="max_team_size"
-                      type="number"
-                      defaultValue={competition?.max_team_size || ""}
-                      placeholder="Unlimited if empty"
-                    />
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -341,6 +633,16 @@ export default function CompetitionForm({
                   placeholder="https://example.com"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="terms_conditions_url">Terms & Conditions</Label>
+              <Input
+                id="terms_conditions_url"
+                name="terms_conditions_url"
+                type="url"
+                defaultValue={competition?.terms_conditions_url || ""}
+                placeholder="https://example.com/terms"
+              />
             </div>
           </div>
 
@@ -395,8 +697,10 @@ export default function CompetitionForm({
               <div className="flex items-center space-x-2 pt-8">
                 <Checkbox
                   id="featured"
-                  name="featured"
-                  defaultChecked={competition?.featured || false}
+                  checked={isFeatured}
+                  onCheckedChange={(checked) =>
+                    setIsFeatured(checked as boolean)
+                  }
                 />
                 <Label htmlFor="featured">Featured Competition</Label>
               </div>

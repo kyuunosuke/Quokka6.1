@@ -1,3 +1,5 @@
+"use client";
+
 import Footer from "@/components/footer";
 import Hero from "@/components/hero";
 import Navbar from "@/components/navbar";
@@ -13,6 +15,20 @@ import {
 } from "@/components/ui/card";
 import { FlipCard } from "@/components/ui/flip-card";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   ArrowUpRight,
   Trophy,
   Target,
@@ -21,127 +37,276 @@ import {
   Calendar,
   DollarSign,
   Filter,
-  Heart,
   Clock,
   MoreHorizontal,
 } from "lucide-react";
-import { createClient } from "../../supabase/server";
+import { createClient } from "../../supabase/client";
+
+// Component for expandable text
+function ExpandableText({
+  text,
+  maxLength = 150,
+}: {
+  text: string;
+  maxLength?: number;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const shouldTruncate = text.length > maxLength;
+  const displayText =
+    shouldTruncate && !isExpanded ? text.slice(0, maxLength) + "..." : text;
+
+  return (
+    <div>
+      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+        {displayText}
+      </p>
+      {shouldTruncate && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+          className="mt-2 flex items-center gap-1 text-purple-600 hover:text-purple-700 text-sm font-medium transition-colors"
+        >
+          {isExpanded ? (
+            <>
+              Show less <ChevronUp className="w-4 h-4" />
+            </>
+          ) : (
+            <>
+              Show more <ChevronDown className="w-4 h-4" />
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Component for competition details card
+function CompetitionDetailsCard({
+  requirements,
+  rules,
+}: {
+  requirements: string[];
+  rules: string;
+}) {
+  return (
+    <Card className="bg-neuro-light shadow-neuro overflow-hidden w-full h-full">
+      <CardContent className="p-6 space-y-6 h-full overflow-y-auto">
+        {/* Requirements Section */}
+        <div>
+          <h4 className="font-semibold text-lg mb-4 text-purple-600 flex items-center gap-2">
+            <Target className="w-5 h-5" />
+            Requirements
+          </h4>
+          <div className="space-y-3">
+            {requirements.map((requirement, index) => (
+              <div key={index} className="flex items-start gap-3">
+                <div className="w-2 h-2 bg-purple-600 rounded-full mt-2 flex-shrink-0" />
+                <ExpandableText text={requirement} maxLength={100} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Rules Section */}
+        <div className="border-t pt-6">
+          <h4 className="font-semibold text-lg mb-4 text-blue-600 flex items-center gap-2">
+            <Trophy className="w-5 h-5" />
+            Rules
+          </h4>
+          <ExpandableText text={rules} maxLength={200} />
+        </div>
+      </CardContent>
+
+      <CardFooter className="flex gap-2 p-4 border-t bg-white/50">
+        <Button
+          className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+          onClick={() => {
+            // This will be handled by the parent component's data
+            console.log("Go to competition clicked");
+          }}
+        >
+          Go to competition
+        </Button>
+        <Button variant="outline" size="icon">
+          <Star className="w-4 h-4" />
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { User } from "@supabase/supabase-js";
 
-export default async function Home() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default function Home() {
+  const [competitions, setCompetitions] = useState<any[] | null>(null);
+  const [error, setError] = useState<any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [savedCompetitions, setSavedCompetitions] = useState<Set<string>>(
+    new Set(),
+  );
+  const [savingCompetition, setSavingCompetition] = useState<string | null>(
+    null,
+  );
+  const [prizeDialogOpen, setPrizeDialogOpen] = useState(false);
+  const [selectedPrizeDescription, setSelectedPrizeDescription] = useState("");
+  const router = useRouter();
 
-  // Mock competition data - in real app this would come from Supabase
-  const competitions = [
-    {
-      id: 1,
-      title: "Digital Art Showcase 2024",
-      description:
-        "Create stunning digital artwork using any medium. Show us your creativity!",
-      thumbnail:
-        "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&q=80",
-      prize: "$5,000",
-      deadline: "Dec 31, 2024",
-      category: "Design & Art",
-      difficulty: "All Levels",
-      participants: 234,
-      requirements:
-        "Original digital artwork, minimum 1920x1080 resolution, submitted in PNG or JPG format.",
-      rules:
-        "No AI-generated content, must be original work, one submission per participant.",
+  const handleSaveCompetition = async (competitionId: string) => {
+    if (!user) {
+      // Redirect to sign in if not authenticated
+      router.push("/sign-in");
+      return;
+    }
+
+    if (savedCompetitions.has(competitionId)) {
+      // Competition is already saved, remove it
+      setSavingCompetition(competitionId);
+      try {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from("saved_competitions")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("competition_id", competitionId);
+
+        if (error) throw error;
+
+        // Update local state
+        setSavedCompetitions((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(competitionId);
+          return newSet;
+        });
+      } catch (error) {
+        console.error("Error removing competition from saved:", error);
+      } finally {
+        setSavingCompetition(null);
+      }
+    } else {
+      // Save the competition
+      setSavingCompetition(competitionId);
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.from("saved_competitions").insert({
+          user_id: user.id,
+          competition_id: competitionId,
+          saved_at: new Date().toISOString(),
+        });
+
+        if (error) throw error;
+
+        // Update local state
+        setSavedCompetitions((prev) => new Set([...prev, competitionId]));
+      } catch (error) {
+        console.error("Error saving competition:", error);
+      } finally {
+        setSavingCompetition(null);
+      }
+    }
+  };
+
+  useEffect(() => {
+    async function fetchData() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setUser(user);
+
+      // Fetch competitions from Supabase
+      try {
+        const result = await supabase
+          .from("competitions")
+          .select(
+            `
+            *,
+            competition_requirements_selected(
+              requirement_option_id,
+              requirement_options(
+                id,
+                name,
+                description
+              )
+            )
+          `,
+          )
+          .eq("status", "active")
+          .order("created_at", { ascending: false });
+
+        setCompetitions(result.data);
+        setError(result.error);
+
+        // If user is authenticated, fetch their saved competitions
+        if (user) {
+          const savedResult = await supabase
+            .from("saved_competitions")
+            .select("competition_id")
+            .eq("user_id", user.id);
+
+          if (savedResult.data) {
+            const savedIds = new Set(
+              savedResult.data.map((item) => item.competition_id),
+            );
+            setSavedCompetitions(savedIds);
+          }
+        }
+      } catch (fetchError) {
+        console.error("Error fetching competitions:", fetchError);
+        setError(fetchError);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  if (error) {
+    console.error("Error fetching competitions:", error);
+  }
+
+  // Debug logging
+  console.log("Competitions data:", competitions);
+  console.log("Error:", error);
+
+  // Ensure we have valid data and filter out null/undefined entries
+  const competitionsData = Array.isArray(competitions)
+    ? competitions.filter((comp) => comp && typeof comp === "object" && comp.id)
+    : [];
+
+  // Generate categories from actual data
+  const categoryCount = competitionsData.reduce(
+    (acc: Record<string, number>, comp) => {
+      try {
+        if (
+          comp &&
+          typeof comp === "object" &&
+          comp.category &&
+          typeof comp.category === "string" &&
+          comp.category.trim().length > 0
+        ) {
+          const category = comp.category.trim();
+          acc[category] = (acc[category] || 0) + 1;
+        }
+      } catch (categoryError) {
+        console.warn(
+          "Error processing category for competition:",
+          comp?.id,
+          categoryError,
+        );
+      }
+      return acc;
     },
-    {
-      id: 2,
-      title: "Photography Challenge: Urban Life",
-      description: "Capture the essence of urban living through your lens.",
-      thumbnail:
-        "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&q=80",
-      prize: "$3,000",
-      deadline: "Jan 15, 2025",
-      category: "Photography",
-      difficulty: "Intermediate",
-      participants: 156,
-      requirements:
-        "High-resolution photos (min 3000px), EXIF data intact, urban theme required.",
-      rules:
-        "Maximum 3 submissions, no heavy editing, must be taken within last 6 months.",
-    },
-    {
-      id: 3,
-      title: "Short Story Contest",
-      description: "Write a compelling short story in 1000 words or less.",
-      thumbnail:
-        "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400&q=80",
-      prize: "$2,500",
-      deadline: "Feb 28, 2025",
-      category: "Writing",
-      difficulty: "All Levels",
-      participants: 89,
-      requirements:
-        "500-1000 words, original fiction, submitted in PDF format.",
-      rules: "English only, no plagiarism, previously unpublished work only.",
-    },
-    {
-      id: 4,
-      title: "Innovation Challenge: Sustainability",
-      description: "Propose innovative solutions for environmental challenges.",
-      thumbnail:
-        "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&q=80",
-      prize: "$10,000",
-      deadline: "Mar 30, 2025",
-      category: "Innovation",
-      difficulty: "Advanced",
-      participants: 67,
-      requirements:
-        "Detailed proposal, prototype or proof of concept, sustainability focus.",
-      rules:
-        "Team submissions allowed (max 4 members), must address environmental impact.",
-    },
-    {
-      id: 5,
-      title: "Music Production Contest",
-      description: "Create an original electronic music track.",
-      thumbnail:
-        "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=80",
-      prize: "$4,000",
-      deadline: "Jan 20, 2025",
-      category: "Music & Audio",
-      difficulty: "Intermediate",
-      participants: 123,
-      requirements: "3-5 minute track, WAV format, original composition only.",
-      rules:
-        "No copyrighted samples, electronic genre preferred, mastered audio required.",
-    },
-    {
-      id: 6,
-      title: "Video Documentary: Local Heroes",
-      description:
-        "Create a short documentary about unsung heroes in your community.",
-      thumbnail:
-        "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=400&q=80",
-      prize: "$6,000",
-      deadline: "Apr 15, 2025",
-      category: "Video & Film",
-      difficulty: "Advanced",
-      participants: 45,
-      requirements:
-        "5-15 minutes, 1080p minimum, documentary style, community focus.",
-      rules:
-        "Must feature real people, proper permissions required, English subtitles if needed.",
-    },
-  ];
+    {},
+  );
 
   const categories = [
-    { name: "All Categories", count: competitions.length },
-    { name: "Design & Art", count: 1 },
-    { name: "Photography", count: 1 },
-    { name: "Writing", count: 1 },
-    { name: "Innovation", count: 1 },
-    { name: "Music & Audio", count: 1 },
-    { name: "Video & Film", count: 1 },
+    { name: "All Categories", count: competitionsData.length },
+    ...Object.entries(categoryCount).map(([name, count]) => ({ name, count })),
   ];
 
   return (
@@ -166,21 +331,52 @@ export default async function Home() {
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                <div className="text-2xl font-bold">{competitions.length}</div>
+                <div className="text-2xl font-bold">
+                  {competitionsData.length}
+                </div>
                 <div className="text-sm text-purple-100">
                   Active Competitions
                 </div>
               </div>
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                <div className="text-2xl font-bold">$30K+</div>
+                <div className="text-2xl font-bold">
+                  $
+                  {competitionsData
+                    .reduce((sum, comp) => {
+                      try {
+                        const amount =
+                          comp && typeof comp.prize_amount === "number"
+                            ? comp.prize_amount
+                            : 0;
+                        return sum + amount;
+                      } catch {
+                        return sum;
+                      }
+                    }, 0)
+                    .toLocaleString()}
+                </div>
                 <div className="text-sm text-purple-100">Total Prizes</div>
               </div>
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                <div className="text-2xl font-bold">714</div>
+                <div className="text-2xl font-bold">
+                  {competitionsData.reduce((sum, comp) => {
+                    try {
+                      const participants =
+                        comp && typeof comp.current_participants === "number"
+                          ? comp.current_participants
+                          : 0;
+                      return sum + participants;
+                    } catch {
+                      return sum;
+                    }
+                  }, 0)}
+                </div>
                 <div className="text-sm text-purple-100">Participants</div>
               </div>
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                <div className="text-2xl font-bold">6</div>
+                <div className="text-2xl font-bold">
+                  {Object.keys(categoryCount).length}
+                </div>
                 <div className="text-sm text-purple-100">Categories</div>
               </div>
             </div>
@@ -239,151 +435,447 @@ export default async function Home() {
       <section className="py-12 bg-neuro-light">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {competitions.map((competition) => (
-              <FlipCard
-                key={`competition-${competition.id}`}
-                className="w-full h-[500px]"
-                frontContent={
-                  <Card className="bg-neuro-light shadow-neuro hover:shadow-neuro-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden w-full h-full">
-                    <div className="relative">
-                      <img
-                        src={competition.thumbnail}
-                        alt={competition.title}
-                        className="w-full h-48 object-cover"
-                      />
-                      <div className="absolute top-4 left-4">
-                        <Badge className="bg-white/90 text-gray-900 hover:bg-white">
-                          {competition.category}
-                        </Badge>
-                      </div>
-                      <div className="absolute top-4 right-4">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="bg-white/90 hover:bg-white"
-                        >
-                          <Heart className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <CardHeader>
-                      <CardTitle className="text-xl mb-2">
-                        {competition.title}
-                      </CardTitle>
-                      <CardDescription className="text-gray-600">
-                        {competition.description}
-                      </CardDescription>
-                    </CardHeader>
-
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-1 text-green-600">
-                          <DollarSign className="w-4 h-4" />
-                          <span className="font-semibold">
-                            {competition.prize}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 text-orange-600">
-                          <Calendar className="w-4 h-4" />
-                          <span>{competition.deadline}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          <span>{competition.participants} participants</span>
-                        </div>
-                        <Badge variant="outline" className="text-xs">
-                          {competition.difficulty}
-                        </Badge>
-                      </div>
-                    </CardContent>
-
-                    <CardFooter className="flex gap-2">
-                      <Button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                        Enter Competition
-                      </Button>
-                      <Button variant="outline" size="icon">
-                        <Star className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="pointer-events-none"
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </CardFooter>
-                  </Card>
+            {competitionsData
+              .map((competition, index) => {
+                // Check if competition is valid
+                if (
+                  !competition ||
+                  typeof competition !== "object" ||
+                  !competition.id
+                ) {
+                  console.warn(
+                    "Invalid competition data at index",
+                    index,
+                    ":",
+                    competition,
+                  );
+                  return null;
                 }
-                backContent={
-                  <Card className="bg-neuro-light shadow-neuro overflow-hidden w-full h-full">
-                    <CardHeader className="text-center">
-                      <CardTitle className="text-xl mb-2">
-                        {competition.title}
-                      </CardTitle>
-                      <CardDescription className="text-gray-600">
-                        Competition Details
-                      </CardDescription>
-                    </CardHeader>
 
-                    <CardContent className="space-y-6 h-full flex flex-col justify-center">
-                      <div>
-                        <h4 className="font-semibold text-lg mb-3 text-purple-600 flex items-center gap-2">
-                          <Target className="w-5 h-5" />
-                          Requirements
-                        </h4>
-                        <p className="text-sm text-gray-700 leading-relaxed">
-                          {competition.requirements}
-                        </p>
-                      </div>
+                try {
+                  // Safe date formatting function
+                  const formatDeadline = (deadline: any) => {
+                    if (
+                      !deadline ||
+                      deadline === null ||
+                      deadline === undefined
+                    )
+                      return "TBD";
+                    try {
+                      const date = new Date(deadline);
+                      if (isNaN(date.getTime())) {
+                        return "TBD";
+                      }
+                      return date.toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      });
+                    } catch (error) {
+                      console.warn(
+                        "Error formatting date for competition",
+                        competition.id,
+                        ":",
+                        error,
+                      );
+                      return "TBD";
+                    }
+                  };
 
-                      <div className="border-t pt-4">
-                        <h4 className="font-semibold text-lg mb-3 text-blue-600 flex items-center gap-2">
-                          <Trophy className="w-5 h-5" />
-                          Rules
-                        </h4>
-                        <p className="text-sm text-gray-700 leading-relaxed">
-                          {competition.rules}
-                        </p>
-                      </div>
-                    </CardContent>
+                  // Safe requirements formatting from requirement_options table - each as single sentence
+                  const formatRequirements = (requirementsSelected: any) => {
+                    try {
+                      if (
+                        !requirementsSelected ||
+                        requirementsSelected === null ||
+                        requirementsSelected === undefined ||
+                        !Array.isArray(requirementsSelected) ||
+                        requirementsSelected.length === 0
+                      ) {
+                        return [
+                          "Requirements will be provided upon registration.",
+                        ];
+                      }
 
-                    <CardFooter className="flex gap-2">
-                      <Button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                        Enter Competition
-                      </Button>
-                      <Button variant="outline" size="icon">
-                        <Star className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="pointer-events-none"
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </CardFooter>
-                  </Card>
+                      const validRequirements = requirementsSelected
+                        .filter(
+                          (req) =>
+                            req &&
+                            typeof req === "object" &&
+                            req !== null &&
+                            req.requirement_options &&
+                            typeof req.requirement_options === "object",
+                        )
+                        .map((req) => {
+                          try {
+                            const option = req.requirement_options;
+                            let text = option.description || option.name || "";
+                            // Ensure single sentence - remove extra periods and add one at the end
+                            text = text.trim().replace(/\.+$/, "") + ".";
+                            return text;
+                          } catch {
+                            return "";
+                          }
+                        })
+                        .filter(
+                          (desc) =>
+                            desc &&
+                            typeof desc === "string" &&
+                            desc.trim().length > 0,
+                        );
+
+                      return validRequirements.length > 0
+                        ? validRequirements
+                        : ["Requirements will be provided upon registration."];
+                    } catch (error) {
+                      console.warn(
+                        "Error formatting requirements for competition",
+                        competition.id,
+                        ":",
+                        error,
+                      );
+                      return [
+                        "Requirements will be provided upon registration.",
+                      ];
+                    }
+                  };
+
+                  // Safe rules formatting from competitions.rules field
+                  const formatRules = (rulesText: any) => {
+                    try {
+                      if (
+                        !rulesText ||
+                        rulesText === null ||
+                        rulesText === undefined ||
+                        typeof rulesText !== "string" ||
+                        rulesText.trim().length === 0
+                      ) {
+                        return "Rules will be provided upon registration.";
+                      }
+
+                      return rulesText.trim();
+                    } catch (error) {
+                      console.warn(
+                        "Error formatting rules for competition",
+                        competition.id,
+                        ":",
+                        error,
+                      );
+                      return "Rules will be provided upon registration.";
+                    }
+                  };
+
+                  // Format the data to match the expected structure
+                  const formattedCompetition = {
+                    id: competition.id || `temp-${index}`,
+                    title:
+                      competition.title &&
+                      typeof competition.title === "string" &&
+                      competition.title.trim()
+                        ? competition.title.trim()
+                        : "Untitled Competition",
+                    description:
+                      competition.description &&
+                      typeof competition.description === "string" &&
+                      competition.description.trim()
+                        ? competition.description.trim()
+                        : competition.detailed_description &&
+                            typeof competition.detailed_description ===
+                              "string" &&
+                            competition.detailed_description.trim()
+                          ? competition.detailed_description.trim()
+                          : "No description available",
+                    thumbnail:
+                      competition.thumbnail_url &&
+                      typeof competition.thumbnail_url === "string" &&
+                      competition.thumbnail_url.trim()
+                        ? competition.thumbnail_url.trim()
+                        : competition.banner_url &&
+                            typeof competition.banner_url === "string" &&
+                            competition.banner_url.trim()
+                          ? competition.banner_url.trim()
+                          : "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&q=80",
+                    prize:
+                      competition.prize_amount &&
+                      typeof competition.prize_amount === "number" &&
+                      !isNaN(competition.prize_amount)
+                        ? `${competition.prize_amount.toLocaleString()}`
+                        : "TBD",
+                    prizeDescription:
+                      competition.prize_description &&
+                      typeof competition.prize_description === "string" &&
+                      competition.prize_description.trim()
+                        ? competition.prize_description.trim()
+                        : "No prize description available",
+                    termsConditionsUrl:
+                      competition.terms_conditions_url &&
+                      typeof competition.terms_conditions_url === "string" &&
+                      competition.terms_conditions_url.trim()
+                        ? competition.terms_conditions_url.trim()
+                        : null,
+                    deadline: formatDeadline(competition.submission_deadline),
+                    category:
+                      competition.category &&
+                      typeof competition.category === "string" &&
+                      competition.category.trim()
+                        ? competition.category.trim()
+                        : "Uncategorized",
+                    difficulty:
+                      competition.difficulty_level &&
+                      typeof competition.difficulty_level === "string" &&
+                      competition.difficulty_level.trim()
+                        ? competition.difficulty_level.trim()
+                        : "Not specified",
+                    organizer:
+                      competition.organizer_name &&
+                      typeof competition.organizer_name === "string" &&
+                      competition.organizer_name.trim()
+                        ? competition.organizer_name.trim()
+                        : competition.organizer &&
+                            typeof competition.organizer === "string" &&
+                            competition.organizer.trim()
+                          ? competition.organizer.trim()
+                          : "Unknown Organizer",
+                    requirements: formatRequirements(
+                      competition.competition_requirements_selected,
+                    ),
+                    rules: formatRules(competition.rules),
+                    featured: competition.featured === true,
+                  };
+
+                  return (
+                    <FlipCard
+                      key={`competition-${formattedCompetition.id}-${index}`}
+                      className={`w-full ${formattedCompetition.featured ? "h-[550px]" : "h-[500px]"}`}
+                      frontContent={
+                        <Card className="bg-neuro-light shadow-neuro hover:shadow-neuro-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden w-full h-full">
+                          {formattedCompetition.featured && (
+                            <CardHeader className="bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 text-white py-2 px-4">
+                              <div className="flex items-center justify-center gap-2">
+                                <Star className="w-5 h-5 fill-current" />
+                                <span className="font-bold text-sm">
+                                  FEATURED COMPETITION
+                                </span>
+                                <Star className="w-5 h-5 fill-current" />
+                              </div>
+                            </CardHeader>
+                          )}
+                          <div className="relative">
+                            <img
+                              src={formattedCompetition.thumbnail}
+                              alt={formattedCompetition.title}
+                              className="w-full h-48 object-cover"
+                            />
+                            <div className="absolute top-4 left-4 flex gap-2">
+                              <Badge className="bg-white/90 text-gray-900 hover:bg-white">
+                                {formattedCompetition.category || "Category"}
+                              </Badge>
+                              <Badge className="bg-blue-100/90 text-blue-800 hover:bg-blue-100">
+                                {formattedCompetition.difficulty ||
+                                  "Not specified"}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <CardHeader>
+                            <CardTitle className="text-xl mb-2">
+                              {formattedCompetition.title}
+                            </CardTitle>
+                            <CardDescription className="text-gray-600">
+                              {formattedCompetition.description}
+                            </CardDescription>
+                          </CardHeader>
+
+                          <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-1 text-green-600">
+                                <DollarSign className="w-4 h-4" />
+                                <span className="font-semibold">
+                                  {formattedCompetition.prize}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 text-orange-600">
+                                <Calendar className="w-4 h-4" />
+                                <span>{formattedCompetition.deadline}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center text-sm text-gray-600">
+                              <div className="flex items-center gap-1">
+                                <Users className="w-4 h-4" />
+                                <span>by {formattedCompetition.organizer}</span>
+                              </div>
+                            </div>
+                          </CardContent>
+
+                          <CardFooter
+                            className="flex gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button
+                              className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                              onClick={() => {
+                                const bannerUrl = competition.banner_url;
+                                if (
+                                  bannerUrl &&
+                                  typeof bannerUrl === "string" &&
+                                  bannerUrl.trim()
+                                ) {
+                                  window.open(bannerUrl.trim(), "_blank");
+                                }
+                              }}
+                            >
+                              Go to competition
+                            </Button>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() =>
+                                      handleSaveCompetition(
+                                        formattedCompetition.id,
+                                      )
+                                    }
+                                    disabled={
+                                      savingCompetition ===
+                                      formattedCompetition.id
+                                    }
+                                    className={
+                                      savedCompetitions.has(
+                                        formattedCompetition.id,
+                                      )
+                                        ? "bg-yellow-100 text-yellow-600 border-yellow-300"
+                                        : ""
+                                    }
+                                  >
+                                    {savingCompetition ===
+                                    formattedCompetition.id ? (
+                                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                    ) : (
+                                      <Star
+                                        className={`w-4 h-4 ${savedCompetitions.has(formattedCompetition.id) ? "fill-current" : ""}`}
+                                      />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>
+                                    {savedCompetitions.has(
+                                      formattedCompetition.id,
+                                    )
+                                      ? "Remove from saved competitions"
+                                      : "Save to my competitions"}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                  <DialogTitle>Prize Description</DialogTitle>
+                                  <DialogDescription>
+                                    Details about the prize for this competition
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="mt-4 space-y-4">
+                                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+                                    {formattedCompetition.prizeDescription}
+                                  </p>
+                                  {formattedCompetition.termsConditionsUrl && (
+                                    <div className="pt-3 border-t">
+                                      <p className="text-sm font-medium text-gray-900 mb-2">
+                                        Terms & Conditions
+                                      </p>
+                                      <a
+                                        href={
+                                          formattedCompetition.termsConditionsUrl
+                                        }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm text-blue-600 hover:text-blue-800 underline break-all"
+                                      >
+                                        {
+                                          formattedCompetition.termsConditionsUrl
+                                        }
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </CardFooter>
+                        </Card>
+                      }
+                      backContent={
+                        <CompetitionDetailsCard
+                          requirements={formattedCompetition.requirements}
+                          rules={formattedCompetition.rules}
+                        />
+                      }
+                    />
+                  );
+                } catch (renderError) {
+                  console.error(
+                    "Error rendering competition at index",
+                    index,
+                    ":",
+                    renderError,
+                    competition,
+                  );
+                  return null;
                 }
-              />
-            ))}
+              })
+              .filter(Boolean)}
           </div>
         </div>
       </section>
 
-      {/* Load More Section */}
-      <section className="py-8 text-center bg-neuro-light">
-        <Button
-          variant="outline"
-          size="lg"
-          className="shadow-neuro hover:shadow-neuro-lg"
-        >
-          Load More Competitions
-        </Button>
+      {/* Debug Section - Remove this after testing */}
+      <section className="py-8 bg-gray-100 text-center">
+        <div className="container mx-auto px-4">
+          <p className="text-sm text-gray-600">
+            Debug: Found {competitionsData.length} competitions
+            {error && ` | Error: ${error.message}`}
+          </p>
+        </div>
       </section>
+
+      {/* Load More Section */}
+      {competitionsData.length === 0 ? (
+        <section className="py-16 text-center bg-neuro-light">
+          <div className="text-gray-500 text-lg">
+            No competitions available at the moment. Check back soon!
+            {error && (
+              <div className="text-red-500 text-sm mt-2">
+                Error: {error.message}
+              </div>
+            )}
+          </div>
+        </section>
+      ) : (
+        <section className="py-8 text-center bg-neuro-light">
+          <Button
+            variant="outline"
+            size="lg"
+            className="shadow-neuro hover:shadow-neuro-lg"
+          >
+            Load More Competitions
+          </Button>
+        </section>
+      )}
 
       <Hero />
 
