@@ -22,6 +22,89 @@ import {
 } from "lucide-react";
 import { createClient } from "../../../supabase/server";
 import Link from "next/link";
+import { Tables } from "@/types/supabase";
+
+type Competition = Tables<"competitions">;
+
+// Helper function to format prize amount
+function formatPrize(amount: number | null, currency: string | null): string {
+  if (!amount || amount <= 0) return "TBD";
+  try {
+    const currencySymbol = currency === "USD" ? "$" : currency || "$";
+    return `${currencySymbol}${amount.toLocaleString()}`;
+  } catch {
+    return "TBD";
+  }
+}
+
+// Helper function to format date
+function formatDate(dateString: string | null): string {
+  if (!dateString) return "TBD";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "TBD";
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return "TBD";
+  }
+}
+
+// Helper function to get requirements text
+function getRequirementsText(competition: Competition): string {
+  try {
+    return (
+      competition?.detailed_description?.trim() ||
+      competition?.description?.trim() ||
+      "No specific requirements listed."
+    );
+  } catch {
+    return "No specific requirements listed.";
+  }
+}
+
+// Helper function to get rules text
+function getRulesText(competition: Competition): string {
+  try {
+    return (
+      competition?.rules?.trim() ||
+      "Please follow all competition guidelines and submit original work only."
+    );
+  } catch {
+    return "Please follow all competition guidelines and submit original work only.";
+  }
+}
+
+// Helper function to safely get string value
+function safeString(
+  value: string | null | undefined,
+  fallback: string = "",
+): string {
+  try {
+    if (value === null || value === undefined) return fallback;
+    const trimmed = String(value).trim();
+    return trimmed || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+// Helper function to safely get number value
+function safeNumber(
+  value: number | null | undefined,
+  fallback: number = 0,
+): number {
+  try {
+    if (value === null || value === undefined) return fallback;
+    const num = Number(value);
+    return !isNaN(num) && isFinite(num) ? num : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export default async function CompetitionsHome() {
   const supabase = await createClient();
@@ -29,115 +112,118 @@ export default async function CompetitionsHome() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Mock competition data - in real app this would come from Supabase
-  const competitions = [
-    {
-      id: 1,
-      title: "Digital Art Showcase 2024",
-      description:
-        "Create stunning digital artwork using any medium. Show us your creativity!",
-      thumbnail:
-        "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&q=80",
-      prize: "$5,000",
-      deadline: "Dec 31, 2024",
-      category: "Design & Art",
-      difficulty: "All Levels",
-      participants: 234,
-      requirements:
-        "Original digital artwork, minimum 1920x1080 resolution, submitted in PNG or JPG format.",
-      rules:
-        "No AI-generated content, must be original work, one submission per participant.",
-    },
-    {
-      id: 2,
-      title: "Photography Challenge: Urban Life",
-      description: "Capture the essence of urban living through your lens.",
-      thumbnail:
-        "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&q=80",
-      prize: "$3,000",
-      deadline: "Jan 15, 2025",
-      category: "Photography",
-      difficulty: "Intermediate",
-      participants: 156,
-      requirements:
-        "High-resolution photos (min 3000px), EXIF data intact, urban theme required.",
-      rules:
-        "Maximum 3 submissions, no heavy editing, must be taken within last 6 months.",
-    },
-    {
-      id: 3,
-      title: "Short Story Contest",
-      description: "Write a compelling short story in 1000 words or less.",
-      thumbnail:
-        "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400&q=80",
-      prize: "$2,500",
-      deadline: "Feb 28, 2025",
-      category: "Writing",
-      difficulty: "All Levels",
-      participants: 89,
-      requirements:
-        "500-1000 words, original fiction, submitted in PDF format.",
-      rules: "English only, no plagiarism, previously unpublished work only.",
-    },
-    {
-      id: 4,
-      title: "Innovation Challenge: Sustainability",
-      description: "Propose innovative solutions for environmental challenges.",
-      thumbnail:
-        "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&q=80",
-      prize: "$10,000",
-      deadline: "Mar 30, 2025",
-      category: "Innovation",
-      difficulty: "Advanced",
-      participants: 67,
-      requirements:
-        "Detailed proposal, prototype or proof of concept, sustainability focus.",
-      rules:
-        "Team submissions allowed (max 4 members), must address environmental impact.",
-    },
-    {
-      id: 5,
-      title: "Music Production Contest",
-      description: "Create an original electronic music track.",
-      thumbnail:
-        "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=80",
-      prize: "$4,000",
-      deadline: "Jan 20, 2025",
-      category: "Music & Audio",
-      difficulty: "Intermediate",
-      participants: 123,
-      requirements: "3-5 minute track, WAV format, original composition only.",
-      rules:
-        "No copyrighted samples, electronic genre preferred, mastered audio required.",
-    },
-    {
-      id: 6,
-      title: "Video Documentary: Local Heroes",
-      description:
-        "Create a short documentary about unsung heroes in your community.",
-      thumbnail:
-        "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=400&q=80",
-      prize: "$6,000",
-      deadline: "Apr 15, 2025",
-      category: "Video & Film",
-      difficulty: "Advanced",
-      participants: 45,
-      requirements:
-        "5-15 minutes, 1080p minimum, documentary style, community focus.",
-      rules:
-        "Must feature real people, proper permissions required, English subtitles if needed.",
-    },
-  ];
+  // Fetch competitions from Supabase (try all statuses first to debug)
+  let competitions: Competition[] = [];
+  let error = null;
+  let debugInfo = "";
+
+  try {
+    // First, let's see what competitions exist with any status
+    const { data: allData, error: allError } = await supabase
+      .from("competitions")
+      .select("id, title, status, created_at")
+      .order("created_at", { ascending: false });
+
+    if (allError) {
+      console.error("Error fetching all competitions:", allError);
+      debugInfo = `Debug: Error fetching competitions - ${allError.message}`;
+    } else {
+      const allCompetitions = allData || [];
+      debugInfo = `Debug: Found ${allCompetitions.length} total competitions. Statuses: ${[...new Set(allCompetitions.map((c) => c.status))].join(", ")}`;
+      console.log("All competitions:", allCompetitions);
+    }
+
+    // Now fetch the actual competition data
+    // Try multiple status values that might be used
+    const { data, error: fetchError } = await supabase
+      .from("competitions")
+      .select("*")
+      .in("status", ["active", "open", "published", "live"])
+      .order("created_at", { ascending: false });
+
+    if (fetchError) {
+      console.error("Error fetching competitions:", fetchError);
+      error = fetchError.message;
+    } else {
+      competitions = data || [];
+      console.log("Fetched competitions:", competitions);
+    }
+
+    // If no competitions found with specific statuses, try fetching all
+    if (competitions.length === 0 && !fetchError) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("competitions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (!fallbackError && fallbackData) {
+        competitions = fallbackData;
+        debugInfo += ` | Fallback: Using all competitions (${competitions.length} found)`;
+      }
+    }
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    error = "Failed to load competitions";
+  }
+
+  // Generate categories from actual data
+  const categoryMap = new Map<string, number>();
+  try {
+    if (Array.isArray(competitions)) {
+      competitions.forEach((comp) => {
+        try {
+          if (comp && typeof comp === "object" && comp.id) {
+            const category = safeString(comp.category, "Other");
+            categoryMap.set(category, (categoryMap.get(category) || 0) + 1);
+          }
+        } catch (err) {
+          console.error(
+            "Error processing individual competition category:",
+            err,
+          );
+        }
+      });
+    }
+  } catch (error) {
+    console.error("Error processing categories:", error);
+  }
 
   const categories = [
     { name: "All Categories", count: competitions.length },
-    { name: "Design & Art", count: 1 },
-    { name: "Photography", count: 1 },
-    { name: "Writing", count: 1 },
-    { name: "Innovation", count: 1 },
-    { name: "Music & Audio", count: 1 },
-    { name: "Video & Film", count: 1 },
+    ...Array.from(categoryMap.entries()).map(([name, count]) => ({
+      name,
+      count,
+    })),
   ];
+
+  // Calculate total prize money
+  const totalPrizes = Array.isArray(competitions)
+    ? competitions.reduce((sum, comp) => {
+        try {
+          if (comp && typeof comp === "object") {
+            return sum + safeNumber(comp.prize_amount, 0);
+          }
+          return sum;
+        } catch {
+          return sum;
+        }
+      }, 0)
+    : 0;
+
+  // Calculate total participants
+  const totalParticipants = Array.isArray(competitions)
+    ? competitions.reduce((sum, comp) => {
+        try {
+          if (comp && typeof comp === "object") {
+            return sum + safeNumber(comp.current_participants, 0);
+          }
+          return sum;
+        } catch {
+          return sum;
+        }
+      }, 0)
+    : 0;
 
   return (
     <div className="min-h-screen bg-neuro-light">
@@ -164,15 +250,19 @@ export default async function CompetitionsHome() {
                 </div>
               </div>
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                <div className="text-2xl font-bold">$30K+</div>
+                <div className="text-2xl font-bold">
+                  {totalPrizes > 0
+                    ? `${(totalPrizes / 1000).toFixed(0)}K+`
+                    : "TBD"}
+                </div>
                 <div className="text-sm text-purple-100">Total Prizes</div>
               </div>
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                <div className="text-2xl font-bold">714</div>
+                <div className="text-2xl font-bold">{totalParticipants}</div>
                 <div className="text-sm text-purple-100">Participants</div>
               </div>
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                <div className="text-2xl font-bold">6</div>
+                <div className="text-2xl font-bold">{categoryMap.size}</div>
                 <div className="text-sm text-purple-100">Categories</div>
               </div>
             </div>
@@ -230,95 +320,197 @@ export default async function CompetitionsHome() {
       {/* Competitions Grid */}
       <section className="py-12">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {competitions.map((competition) => (
-              <Card
-                key={competition.id}
-                className="bg-neuro-light shadow-neuro hover:shadow-neuro-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
-              >
-                <div className="relative">
-                  <img
-                    src={competition.thumbnail}
-                    alt={competition.title}
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="absolute top-4 left-4">
-                    <Badge className="bg-white/90 text-gray-900 hover:bg-white">
-                      {competition.category}
-                    </Badge>
-                  </div>
-                  <div className="absolute top-4 right-4">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="bg-white/90 hover:bg-white"
-                    >
-                      <Heart className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
+              <p className="text-red-800">
+                Error loading competitions: {error}
+              </p>
+            </div>
+          )}
 
-                <CardHeader>
-                  <CardTitle className="text-xl mb-2">
-                    {competition.title}
-                  </CardTitle>
-                  <CardDescription className="text-gray-600">
-                    {competition.description}
-                  </CardDescription>
-                </CardHeader>
+          {debugInfo && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+              <p className="text-blue-800 text-sm">{debugInfo}</p>
+            </div>
+          )}
 
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-1 text-green-600">
-                      <DollarSign className="w-4 h-4" />
-                      <span className="font-semibold">{competition.prize}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-orange-600">
-                      <Calendar className="w-4 h-4" />
-                      <span>{competition.deadline}</span>
-                    </div>
-                  </div>
+          {(!Array.isArray(competitions) || competitions.length === 0) &&
+          !error ? (
+            <div className="text-center py-12">
+              <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                No Active Competitions
+              </h3>
+              <p className="text-gray-500">
+                Check back soon for new competitions!
+              </p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {Array.isArray(competitions) &&
+                competitions
+                  .map((competition, index) => {
+                    // Safety check for competition object
+                    if (
+                      !competition ||
+                      typeof competition !== "object" ||
+                      !competition.id
+                    ) {
+                      console.warn(
+                        `Invalid competition at index ${index}:`,
+                        competition,
+                      );
+                      return null;
+                    }
 
-                  <div className="flex items-center justify-between text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      <span>{competition.participants} participants</span>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {competition.difficulty}
-                    </Badge>
-                  </div>
+                    try {
+                      const competitionId = safeString(
+                        competition.id,
+                        `comp-${index}`,
+                      );
+                      return (
+                        <Card
+                          key={competitionId}
+                          className="bg-neuro-light shadow-neuro hover:shadow-neuro-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+                        >
+                          <div className="relative">
+                            <img
+                              src={
+                                safeString(competition?.thumbnail_url) ||
+                                safeString(competition?.banner_url) ||
+                                "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&q=80"
+                              }
+                              alt={safeString(
+                                competition?.title,
+                                "Competition",
+                              )}
+                              className="w-full h-48 object-cover"
+                              onError={(e) => {
+                                try {
+                                  const target = e.target as HTMLImageElement;
+                                  if (target) {
+                                    target.src =
+                                      "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&q=80";
+                                  }
+                                } catch (err) {
+                                  console.error(
+                                    "Error setting fallback image:",
+                                    err,
+                                  );
+                                }
+                              }}
+                            />
+                            <div className="absolute top-4 left-4">
+                              <Badge className="bg-white/90 text-gray-900 hover:bg-white">
+                                {safeString(competition?.category, "General")}
+                              </Badge>
+                            </div>
+                            <div className="absolute top-4 right-4">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="bg-white/90 hover:bg-white"
+                              >
+                                <Heart className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
 
-                  {/* Expandable Details - Initially Hidden */}
-                  <div className="hidden group-hover:block space-y-3 pt-4 border-t">
-                    <div>
-                      <h4 className="font-semibold text-sm mb-1">
-                        Requirements:
-                      </h4>
-                      <p className="text-xs text-gray-600">
-                        {competition.requirements}
-                      </p>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-sm mb-1">Rules:</h4>
-                      <p className="text-xs text-gray-600">
-                        {competition.rules}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
+                          <CardHeader>
+                            <CardTitle className="text-xl mb-2">
+                              {safeString(
+                                competition?.title,
+                                "Untitled Competition",
+                              )}
+                            </CardTitle>
+                            <CardDescription className="text-gray-600">
+                              {safeString(
+                                competition?.description,
+                                "No description available.",
+                              )}
+                            </CardDescription>
+                          </CardHeader>
 
-                <CardFooter className="flex gap-2">
-                  <Button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                    Enter Competition
-                  </Button>
-                  <Button variant="outline" size="icon">
-                    <Star className="w-4 h-4" />
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
+                          <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-1 text-green-600">
+                                <DollarSign className="w-4 h-4" />
+                                <span className="font-semibold">
+                                  {formatPrize(
+                                    competition?.prize_amount,
+                                    competition?.prize_currency,
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 text-orange-600">
+                                <Calendar className="w-4 h-4" />
+                                <span>
+                                  {formatDate(competition?.submission_deadline)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-sm text-gray-600">
+                              <div className="flex items-center gap-1">
+                                <Users className="w-4 h-4" />
+                                <span>
+                                  {safeNumber(
+                                    competition?.current_participants,
+                                    0,
+                                  )}{" "}
+                                  participants
+                                </span>
+                              </div>
+                              <Badge variant="outline" className="text-xs">
+                                {safeString(
+                                  competition?.difficulty_level,
+                                  "All Levels",
+                                )}
+                              </Badge>
+                            </div>
+
+                            {/* Requirements and Rules - Always Visible */}
+                            <div className="space-y-3 pt-4 border-t">
+                              <div>
+                                <h4 className="font-semibold text-sm mb-1 text-purple-700">
+                                  Requirements:
+                                </h4>
+                                <p className="text-xs text-gray-600 line-clamp-2">
+                                  {getRequirementsText(competition)}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-sm mb-1 text-purple-700">
+                                  Rules:
+                                </h4>
+                                <p className="text-xs text-gray-600 line-clamp-2">
+                                  {getRulesText(competition)}
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+
+                          <CardFooter className="flex gap-2">
+                            <Button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                              Enter Competition
+                            </Button>
+                            <Button variant="outline" size="icon">
+                              <Star className="w-4 h-4" />
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      );
+                    } catch (error) {
+                      console.error(
+                        `Error rendering competition ${competition?.id || "unknown"}:`,
+                        error,
+                      );
+                      return null;
+                    }
+                  })
+                  .filter(Boolean)}
+            </div>
+          )}
         </div>
       </section>
 
