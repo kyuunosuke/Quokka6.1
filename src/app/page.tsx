@@ -896,23 +896,51 @@ export default function Home() {
             {[
               {
                 icon: <Trophy className="w-6 h-6" />,
-                title: "Amazing Prizes",
-                description: "Win cash, products, and exclusive opportunities",
+                title: "Centralised Competition Hub",
+                description:
+                  "Discover all active competitions in one place. Easily search and filter by category, location, prize type, deadline, and more — no need to scour multiple websites.",
               },
               {
                 icon: <Target className="w-6 h-6" />,
-                title: "Fair Judging",
-                description: "Transparent evaluation by industry experts",
+                title: "Seamless User Experience",
+                description:
+                  "Enjoy an intuitive dashboard where you can track all your entries, see competition statuses, and view winner announcements. Receive real-time alerts and email notifications for new competitions and winning results.",
               },
               {
                 icon: <Users className="w-6 h-6" />,
-                title: "Global Community",
-                description: "Connect with creators from around the world",
+                title: "Single Unified Profile",
+                description:
+                  "Create a single user profile to enter multiple competitions without repeatedly filling out your details — saving time and effort.",
               },
               {
                 icon: <Star className="w-6 h-6" />,
-                title: "All Skill Levels",
-                description: "Competitions for beginners to professionals",
+                title: "Engaging Skill-Based Games",
+                description:
+                  "More than luck. Participate in fun, skill-based competitions that reward creativity, knowledge, or strategy — making every entry more engaging.",
+              },
+              {
+                icon: <Trophy className="w-6 h-6" />,
+                title: "Clear and Concise Competition Summaries",
+                description:
+                  "No more wading through lengthy terms and conditions. We highlight key rules, eligibility, and entry steps so you know exactly what's required before joining.",
+              },
+              {
+                icon: <Target className="w-6 h-6" />,
+                title: "Privacy-First Participation",
+                description:
+                  "You're in control. Choose what information to share for each competition — your data, your decision.",
+              },
+              {
+                icon: <Users className="w-6 h-6" />,
+                title: "Transparent and Legitimacy",
+                description:
+                  "We're committed to fairness. Timestamped draw, browse public results, and see real prize deliveries. Every competition undergoes proper checks for legitimacy and audit.",
+              },
+              {
+                icon: <Star className="w-6 h-6" />,
+                title: "Bonus: Reward",
+                description:
+                  "Level up and unlock perks as you participate more. Be part of a growing community of compers who love the thrill of winning.",
               },
             ].map((feature, index) => (
               <div
