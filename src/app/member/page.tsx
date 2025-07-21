@@ -1,11 +1,14 @@
-import { redirect } from "next/navigation";
-import { createClient } from "../../../supabase/server";
+"use client";
+
+import { useRouter } from "next/navigation";
+import { createClient } from "../../../supabase/client";
 import MemberProfile from "@/components/member-profile";
 import MemberSettings from "@/components/member-settings";
 import LikedCompetitions from "@/components/liked-competitions";
 import JoinedCompetitions from "@/components/joined-competitions";
 import Gamification from "@/components/gamification";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -14,69 +17,116 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, User, Settings, Heart, Users, Gamepad2 } from "lucide-react";
+import {
+  Trophy,
+  User,
+  Settings,
+  Heart,
+  Users,
+  Gamepad2,
+  Loader2,
+} from "lucide-react";
 import DashboardNavbar from "@/components/dashboard-navbar";
 
-export default async function MemberDashboard() {
-  const supabase = await createClient();
+export default function MemberDashboard() {
+  const router = useRouter();
+  const supabase = createClient();
+  const [user, setUser] = useState<any>(null);
+  const [userData, setUserData] = useState<any>(null);
+  const [savedCompetitions, setSavedCompetitions] = useState<any[]>([]);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-  if (!user) {
-    return redirect("/member/login");
+        if (!user) {
+          router.push("/member/login");
+          return;
+        }
+
+        setUser(user);
+
+        // Fetch user profile data from the profiles table
+        const { data: userData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+
+        setUserData(userData);
+
+        // Fetch user's competition data
+        const { data: savedCompetitions } = await supabase
+          .from("saved_competitions")
+          .select(
+            `
+            *,
+            competitions (
+              id,
+              title,
+              description,
+              category,
+              status,
+              start_date,
+              end_date,
+              prize_amount,
+              prize_currency,
+              thumbnail_url
+            )
+          `,
+          )
+          .eq("user_id", user.id);
+
+        setSavedCompetitions(savedCompetitions || []);
+
+        const { data: submissions } = await supabase
+          .from("competition_submissions")
+          .select(
+            `
+            *,
+            competitions (
+              id,
+              title,
+              description,
+              category,
+              status,
+              start_date,
+              end_date,
+              prize_amount,
+              prize_currency,
+              thumbnail_url
+            )
+          `,
+          )
+          .eq("user_id", user.id);
+
+        setSubmissions(submissions || []);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [router, supabase]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
-  // Fetch user profile data from the profiles table
-  const { data: userData } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  // Fetch user's competition data
-  const { data: savedCompetitions } = await supabase
-    .from("saved_competitions")
-    .select(
-      `
-      *,
-      competitions (
-        id,
-        title,
-        description,
-        category,
-        status,
-        start_date,
-        end_date,
-        prize_amount,
-        prize_currency,
-        thumbnail_url
-      )
-    `,
-    )
-    .eq("user_id", user.id);
-
-  const { data: submissions } = await supabase
-    .from("competition_submissions")
-    .select(
-      `
-      *,
-      competitions (
-        id,
-        title,
-        description,
-        category,
-        status,
-        start_date,
-        end_date,
-        prize_amount,
-        prize_currency,
-        thumbnail_url
-      )
-    `,
-    )
-    .eq("user_id", user.id);
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -105,7 +155,7 @@ export default async function MemberDashboard() {
                   <div>
                     <p className="text-sm text-muted-foreground">Liked</p>
                     <p className="text-2xl font-bold">
-                      {savedCompetitions?.length || 0}
+                      {savedCompetitions.length}
                     </p>
                   </div>
                 </div>
@@ -117,9 +167,7 @@ export default async function MemberDashboard() {
                   <Users className="h-5 w-5 text-blue-500" />
                   <div>
                     <p className="text-sm text-muted-foreground">Joined</p>
-                    <p className="text-2xl font-bold">
-                      {submissions?.length || 0}
-                    </p>
+                    <p className="text-2xl font-bold">{submissions.length}</p>
                   </div>
                 </div>
               </CardContent>
@@ -131,8 +179,10 @@ export default async function MemberDashboard() {
                   <div>
                     <p className="text-sm text-muted-foreground">Completed</p>
                     <p className="text-2xl font-bold">
-                      {submissions?.filter((s) => s.status === "submitted")
-                        .length || 0}
+                      {
+                        submissions.filter((s) => s.status === "submitted")
+                          .length
+                      }
                     </p>
                   </div>
                 </div>
@@ -153,37 +203,96 @@ export default async function MemberDashboard() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="profile" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Profile
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Settings
-            </TabsTrigger>
-            <TabsTrigger value="liked" className="flex items-center gap-2">
-              <Heart className="h-4 w-4" />
-              Liked
-            </TabsTrigger>
-            <TabsTrigger value="joined" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Joined
-            </TabsTrigger>
-            <TabsTrigger value="past" className="flex items-center gap-2">
-              <Trophy className="h-4 w-4" />
-              Past
-            </TabsTrigger>
-            <TabsTrigger
-              value="gamification"
-              className="flex items-center gap-2"
-            >
-              <Gamepad2 className="h-4 w-4" />
-              Rewards
-            </TabsTrigger>
-          </TabsList>
+        <MemberTabs
+          savedCompetitions={savedCompetitions}
+          submissions={submissions}
+          user={user}
+          userData={userData}
+        />
+      </main>
+    </div>
+  );
+}
 
+function MemberTabs({
+  savedCompetitions,
+  submissions,
+  user,
+  userData,
+}: {
+  savedCompetitions: any[];
+  submissions: any[];
+  user: any;
+  userData: any;
+}) {
+  const [activeTab, setActiveTab] = useState("liked");
+
+  return (
+    <>
+      {/* Coming Soon Banner - Only show on Joined tab */}
+      {activeTab === "joined" && (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 bg-yellow-500 rounded-full animate-pulse"></div>
+            <p className="text-yellow-800 font-medium">
+              This feature is coming soon
+            </p>
+          </div>
+        </div>
+      )}
+
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="flex gap-6"
+      >
+        <TabsList className="flex flex-col h-fit w-48 p-2">
+          <TabsTrigger
+            value="liked"
+            className="flex items-center gap-2 w-full justify-start"
+          >
+            <Heart className="h-4 w-4" />
+            Liked
+          </TabsTrigger>
+          <TabsTrigger
+            value="joined"
+            className="flex items-center gap-2 w-full justify-start"
+          >
+            <Users className="h-4 w-4" />
+            Joined
+          </TabsTrigger>
+          <TabsTrigger
+            value="past"
+            className="flex items-center gap-2 w-full justify-start"
+          >
+            <Trophy className="h-4 w-4" />
+            Past
+          </TabsTrigger>
+          <TabsTrigger
+            value="gamification"
+            className="flex items-center gap-2 w-full justify-start"
+          >
+            <Gamepad2 className="h-4 w-4" />
+            Rewards
+          </TabsTrigger>
+          <div className="flex-1" />
+          <TabsTrigger
+            value="profile"
+            className="flex items-center gap-2 w-full justify-start mt-4"
+          >
+            <User className="h-4 w-4" />
+            Profile
+          </TabsTrigger>
+          <TabsTrigger
+            value="settings"
+            className="flex items-center gap-2 w-full justify-start"
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </TabsTrigger>
+        </TabsList>
+
+        <div className="flex-1">
           <TabsContent value="profile" className="space-y-6">
             <MemberProfile user={user} userData={userData} />
           </TabsContent>
@@ -193,27 +302,23 @@ export default async function MemberDashboard() {
           </TabsContent>
 
           <TabsContent value="liked" className="space-y-6">
-            <LikedCompetitions competitions={savedCompetitions || []} />
+            <LikedCompetitions competitions={savedCompetitions} />
           </TabsContent>
 
           <TabsContent value="joined" className="space-y-6">
             <JoinedCompetitions
-              submissions={
-                submissions?.filter(
-                  (s) => s.competitions?.status === "active",
-                ) || []
-              }
+              submissions={submissions.filter(
+                (s) => s.competitions?.status === "active",
+              )}
               title="Active Competitions"
             />
           </TabsContent>
 
           <TabsContent value="past" className="space-y-6">
             <JoinedCompetitions
-              submissions={
-                submissions?.filter(
-                  (s) => s.competitions?.status === "completed",
-                ) || []
-              }
+              submissions={submissions.filter(
+                (s) => s.competitions?.status === "completed",
+              )}
               title="Past Competitions"
             />
           </TabsContent>
@@ -222,12 +327,12 @@ export default async function MemberDashboard() {
             <Gamification
               user={user}
               userData={userData}
-              submissions={submissions || []}
-              savedCompetitions={savedCompetitions || []}
+              submissions={submissions}
+              savedCompetitions={savedCompetitions}
             />
           </TabsContent>
-        </Tabs>
-      </main>
-    </div>
+        </div>
+      </Tabs>
+    </>
   );
 }
