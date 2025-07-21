@@ -25,8 +25,13 @@ import {
   Users,
   Gamepad2,
   Loader2,
+  Star,
 } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard-navbar";
+import {
+  calculateProfileLevel,
+  getLevelBadgeColor,
+} from "@/utils/profile-levels";
 
 export default function MemberDashboard() {
   const router = useRouter();
@@ -128,6 +133,9 @@ export default function MemberDashboard() {
     return null;
   }
 
+  // Calculate profile level
+  const profileLevel = calculateProfileLevel(userData);
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardNavbar />
@@ -188,14 +196,21 @@ export default function MemberDashboard() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card
+              className={`${getLevelBadgeColor(profileLevel.level)} border-2`}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center gap-2">
-                  <Gamepad2 className="h-5 w-5 text-purple-500" />
+                  <Star className="h-5 w-5 text-current" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Level</p>
-                    <p className="text-2xl font-bold">1</p>
+                    <p className="text-sm text-current opacity-80">Rank</p>
+                    <p className="text-2xl font-bold text-current">
+                      {profileLevel.level}
+                    </p>
                   </div>
+                </div>
+                <div className="mt-2 text-xs text-current opacity-70">
+                  {profileLevel.progress}% Complete
                 </div>
               </CardContent>
             </Card>
@@ -208,6 +223,7 @@ export default function MemberDashboard() {
           submissions={submissions}
           user={user}
           userData={userData}
+          profileLevel={profileLevel}
         />
       </main>
     </div>
@@ -219,11 +235,13 @@ function MemberTabs({
   submissions,
   user,
   userData,
+  profileLevel,
 }: {
   savedCompetitions: any[];
   submissions: any[];
   user: any;
   userData: any;
+  profileLevel: any;
 }) {
   const [activeTab, setActiveTab] = useState("liked");
 

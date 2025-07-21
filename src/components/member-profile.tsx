@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
   User,
   Mail,
@@ -34,9 +35,24 @@ import {
   UserCheck,
   Users,
   Heart,
+  Star,
+  AlertTriangle,
+  CheckCircle,
+  Lock,
+  Shield,
+  Upload,
+  FileText,
+  Clock,
 } from "lucide-react";
 import { createClient } from "../../supabase/client";
 import { useRouter } from "next/navigation";
+import {
+  calculateProfileLevel,
+  getLevelBadgeColor,
+  getProgressBarColor,
+} from "@/utils/profile-levels";
+import { Progress } from "./ui/progress";
+import { Alert, AlertDescription } from "./ui/alert";
 
 interface MemberProfileProps {
   user: any;
@@ -49,10 +65,12 @@ export default function MemberProfile({
 }: MemberProfileProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [uploadingDocument, setUploadingDocument] = useState(false);
   const [formData, setFormData] = useState({
     // Basic Information
     nickname: userData?.nickname || "",
     email: userData?.email || user?.email || "",
+    avatar_url: userData?.avatar_url || "",
 
     // General Profile
     first_name: userData?.first_name || "",
@@ -93,6 +111,7 @@ export default function MemberProfile({
         id: user.id,
         nickname: formData.nickname || null,
         email: formData.email || null,
+        avatar_url: formData.avatar_url || null,
         first_name: formData.first_name || null,
         last_name: formData.last_name || null,
         gender: formData.gender || null,
@@ -171,6 +190,7 @@ export default function MemberProfile({
       // Basic Information
       nickname: userData?.nickname || "",
       email: userData?.email || user?.email || "",
+      avatar_url: userData?.avatar_url || "",
 
       // General Profile
       first_name: userData?.first_name || "",
@@ -211,6 +231,151 @@ export default function MemberProfile({
       .slice(0, 2);
   };
 
+  // Calculate profile level and progress
+  const profileLevel = calculateProfileLevel(userData);
+  const canEditDemographic =
+    profileLevel.canAdvanceToLevel3 || profileLevel.level >= 3;
+  const canEditVerification =
+    profileLevel.canAdvanceToLevel4 || profileLevel.level === 4;
+
+  // Handle document upload
+  const handleDocumentUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+      "application/pdf",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Please upload a valid document (JPEG, PNG, or PDF)");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File size must be less than 5MB");
+      return;
+    }
+
+    setUploadingDocument(true);
+    try {
+      // Upload to Supabase Storage
+      const fileName = `${user.id}-${Date.now()}-${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("verification-documents")
+        .upload(fileName, file);
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        alert("Failed to upload document. Please try again.");
+        return;
+      }
+
+      // Get public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage
+        .from("verification-documents")
+        .getPublicUrl(fileName);
+
+      // Update profile with document info
+      const documentInfo = {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        uploadedAt: new Date().toISOString(),
+        storageUrl: publicUrl,
+      };
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          verification_documents: documentInfo,
+          verification_status: "pending",
+          verification_submitted_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      if (updateError) {
+        console.error("Profile update error:", updateError);
+        alert("Failed to update verification status. Please try again.");
+        return;
+      }
+
+      alert(
+        "Document uploaded successfully! Your verification is now pending admin approval.",
+      );
+      window.location.reload();
+    } catch (error) {
+      console.error("Document upload error:", error);
+      alert("An error occurred while uploading. Please try again.");
+    } finally {
+      setUploadingDocument(false);
+    }
+  };
+
+  // Get verification status display
+  const getVerificationStatusDisplay = () => {
+    const status = userData?.verification_status || "not_submitted";
+    switch (status) {
+      case "pending":
+        return {
+          text: "Pending Approval",
+          color: "text-yellow-600",
+          bgColor: "bg-yellow-100",
+          borderColor: "border-yellow-200",
+          icon: <Clock className="h-4 w-4" />,
+        };
+      case "approved":
+        return {
+          text: "Verified",
+          color: "text-green-600",
+          bgColor: "bg-green-100",
+          borderColor: "border-green-200",
+          icon: <CheckCircle className="h-4 w-4" />,
+        };
+      case "rejected":
+        return {
+          text: "Rejected",
+          color: "text-red-600",
+          bgColor: "bg-red-100",
+          borderColor: "border-red-200",
+          icon: <AlertTriangle className="h-4 w-4" />,
+        };
+      default:
+        return {
+          text: "Not Submitted",
+          color: "text-gray-600",
+          bgColor: "bg-gray-100",
+          borderColor: "border-gray-200",
+          icon: <FileText className="h-4 w-4" />,
+        };
+    }
+  };
+
+  const verificationStatus = getVerificationStatusDisplay();
+
+  // Available avatar options
+  const avatarOptions = [
+    { id: "avatar1", url: "/avatars/avatar1.png", name: "Quokka with Avocado" },
+    {
+      id: "avatar2",
+      url: "/avatars/avatar2.png",
+      name: "Quokka Hugging Avocado",
+    },
+    {
+      id: "avatar3",
+      url: "/avatars/avatar3.png",
+      name: "Quokka with Avocado Hat",
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Profile Header */}
@@ -219,21 +384,72 @@ export default function MemberProfile({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={userData?.avatar_url} />
-                  <AvatarFallback className="text-lg">
-                    {getInitials(formData.full_name || formData.email)}
-                  </AvatarFallback>
-                </Avatar>
-                {isEditing && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
-                  >
-                    <Camera className="h-4 w-4" />
-                  </Button>
-                )}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <div className="cursor-pointer hover:opacity-80 transition-opacity">
+                      <Avatar className="h-20 w-20">
+                        <AvatarImage src={formData.avatar_url} />
+                        <AvatarFallback className="text-lg">
+                          {getInitials(formData.full_name || formData.email)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {isEditing && (
+                        <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-blue-500 rounded-full flex items-center justify-center">
+                          <Camera className="h-3 w-3 text-white" />
+                        </div>
+                      )}
+                    </div>
+                  </PopoverTrigger>
+                  {isEditing && (
+                    <PopoverContent className="w-80">
+                      <div className="space-y-4">
+                        <div className="text-center">
+                          <h4 className="font-medium text-base">
+                            Choose Your Avatar
+                          </h4>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Select one of the available avatar options
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          {avatarOptions.map((avatar) => (
+                            <div key={avatar.id} className="text-center">
+                              <div
+                                className={`relative cursor-pointer rounded-lg p-2 border-2 transition-all ${
+                                  formData.avatar_url === avatar.url
+                                    ? "border-blue-500 bg-blue-100"
+                                    : "border-gray-200 hover:border-gray-300"
+                                }`}
+                                onClick={() =>
+                                  setFormData({
+                                    ...formData,
+                                    avatar_url: avatar.url,
+                                  })
+                                }
+                              >
+                                <Avatar className="h-16 w-16 mx-auto">
+                                  <AvatarImage
+                                    src={avatar.url}
+                                    alt={avatar.name}
+                                  />
+                                  <AvatarFallback>?</AvatarFallback>
+                                </Avatar>
+                                {formData.avatar_url === avatar.url && (
+                                  <div className="absolute -top-1 -right-1 h-5 w-5 bg-blue-500 rounded-full flex items-center justify-center">
+                                    <CheckCircle className="h-3 w-3 text-white" />
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {avatar.name}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  )}
+                </Popover>
               </div>
               <div>
                 <CardTitle className="text-2xl">
@@ -253,7 +469,31 @@ export default function MemberProfile({
                         userData.role.slice(1)
                       : "Member"}
                   </Badge>
-                  <Badge variant="outline">Level 1</Badge>
+                  <Badge
+                    variant="outline"
+                    className={`${getLevelBadgeColor(profileLevel.level)} flex items-center gap-1`}
+                  >
+                    <Star className="h-3 w-3" />
+                    Rank {profileLevel.level}
+                  </Badge>
+                </div>
+
+                {/* Profile Progress */}
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Profile Completion
+                    </span>
+                    <span className="font-medium">
+                      {profileLevel.progress}%
+                    </span>
+                  </div>
+                  <Progress value={profileLevel.progress} className="h-2" />
+                  {profileLevel.nextLevelRequirements.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      {profileLevel.nextLevelRequirements[0]}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -280,14 +520,61 @@ export default function MemberProfile({
         </CardHeader>
       </Card>
 
+      {/* Level Progress Overview */}
+      {profileLevel.nextLevelRequirements.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-blue-600" />
+              <CardTitle className="text-blue-900">Rank Progress</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="text-sm text-blue-800">
+                {profileLevel.nextLevelRequirements.map((req, index) => (
+                  <div
+                    key={index}
+                    className={index === 0 ? "font-medium mb-2" : "ml-2"}
+                  >
+                    {req}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Warning for Level 3 access */}
+      {profileLevel.warningMessage && (
+        <Alert className="border-amber-200 bg-amber-50">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            {profileLevel.warningMessage}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Basic Information Card */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <UserCheck className="h-5 w-5 text-blue-600" />
-            <CardTitle>Basic Information</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-blue-600" />
+              <CardTitle>Basic Information</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </div>
+            <Badge
+              variant="outline"
+              className="bg-green-100 text-green-800 border-green-200"
+            >
+              Rank 1 Complete
+            </Badge>
           </div>
-          <CardDescription>Your essential profile details</CardDescription>
+          <CardDescription>
+            Your essential profile details (Required for Rank 1)
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -324,14 +611,37 @@ export default function MemberProfile({
       </Card>
 
       {/* General Profile Card */}
-      <Card>
+      <Card
+        className={
+          profileLevel.level >= 2 ? "border-green-200" : "border-orange-200"
+        }
+      >
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-green-600" />
-            <CardTitle>General Profile</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-green-600" />
+              <CardTitle>General Profile</CardTitle>
+              {profileLevel.level >= 2 ? (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+              )}
+            </div>
+            <Badge
+              variant="outline"
+              className={
+                profileLevel.level >= 2
+                  ? "bg-green-100 text-green-800 border-green-200"
+                  : "bg-orange-100 text-orange-800 border-orange-200"
+              }
+            >
+              {profileLevel.level >= 2
+                ? "Rank 2 Complete"
+                : "Required for Rank 2"}
+            </Badge>
           </div>
           <CardDescription>
-            Your personal information and demographics
+            Your personal information and demographics (Required for Rank 2)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -444,21 +754,75 @@ export default function MemberProfile({
       </Card>
 
       {/* Demographic & Lifestyle Card */}
-      <Card>
+      <Card
+        className={
+          profileLevel.level === 3
+            ? "border-green-200"
+            : canEditDemographic
+              ? "border-purple-200"
+              : "border-gray-200 opacity-75"
+        }
+      >
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Heart className="h-5 w-5 text-purple-600" />
-            <CardTitle>Demographic & Lifestyle</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Heart className="h-5 w-5 text-purple-600" />
+              <CardTitle className={!canEditDemographic ? "text-gray-500" : ""}>
+                Demographic & Lifestyle
+              </CardTitle>
+              {profileLevel.level === 3 ? (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : canEditDemographic ? (
+                <AlertTriangle className="h-4 w-4 text-purple-500" />
+              ) : (
+                <Lock className="h-4 w-4 text-gray-400" />
+              )}
+            </div>
+            <Badge
+              variant="outline"
+              className={
+                profileLevel.level === 3
+                  ? "bg-green-100 text-green-800 border-green-200"
+                  : canEditDemographic
+                    ? "bg-purple-100 text-purple-800 border-purple-200"
+                    : "bg-gray-100 text-gray-600 border-gray-200"
+              }
+            >
+              {profileLevel.level === 3
+                ? "Rank 3 Complete"
+                : canEditDemographic
+                  ? "Required for Rank 3"
+                  : "Locked - Complete Rank 2 First"}
+            </Badge>
           </div>
-          <CardDescription>
-            Your interests, lifestyle, and background information
+          <CardDescription
+            className={!canEditDemographic ? "text-gray-500" : ""}
+          >
+            Your interests, lifestyle, and background information (Required for
+            Rank 3)
+            {!canEditDemographic && (
+              <div className="mt-2 text-amber-600 text-sm font-medium">
+                ⚠️ Complete General Profile section first to unlock this section
+              </div>
+            )}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent
+          className={`space-y-4 ${!canEditDemographic ? "opacity-50" : ""}`}
+        >
+          {!canEditDemographic && (
+            <Alert className="border-amber-200 bg-amber-50 mb-4">
+              <Lock className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                Complete all General Profile fields to unlock this section and
+                advance to Rank 3.
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="interests">Interests</Label>
-              {isEditing ? (
+              {isEditing && canEditDemographic ? (
                 <Textarea
                   id="interests"
                   value={
@@ -487,7 +851,7 @@ export default function MemberProfile({
 
             <div className="space-y-2">
               <Label htmlFor="hobbies">Hobbies</Label>
-              {isEditing ? (
+              {isEditing && canEditDemographic ? (
                 <Textarea
                   id="hobbies"
                   value={
@@ -516,7 +880,7 @@ export default function MemberProfile({
 
             <div className="space-y-2">
               <Label htmlFor="occupation">Occupation</Label>
-              {isEditing ? (
+              {isEditing && canEditDemographic ? (
                 <Input
                   id="occupation"
                   value={formData.occupation}
@@ -534,7 +898,7 @@ export default function MemberProfile({
 
             <div className="space-y-2">
               <Label htmlFor="marital_status">Marital Status</Label>
-              {isEditing ? (
+              {isEditing && canEditDemographic ? (
                 <Select
                   value={formData.marital_status}
                   onValueChange={(value) =>
@@ -564,7 +928,7 @@ export default function MemberProfile({
 
             <div className="space-y-2">
               <Label htmlFor="income_range">Income Range</Label>
-              {isEditing ? (
+              {isEditing && canEditDemographic ? (
                 <Select
                   value={formData.income_range}
                   onValueChange={(value) =>
@@ -597,7 +961,7 @@ export default function MemberProfile({
 
             <div className="space-y-2">
               <Label htmlFor="education">Education</Label>
-              {isEditing ? (
+              {isEditing && canEditDemographic ? (
                 <Select
                   value={formData.education}
                   onValueChange={(value) =>
@@ -628,7 +992,7 @@ export default function MemberProfile({
 
             <div className="space-y-2">
               <Label htmlFor="ethnicity">Ethnicity</Label>
-              {isEditing ? (
+              {isEditing && canEditDemographic ? (
                 <Input
                   id="ethnicity"
                   value={formData.ethnicity}
@@ -646,7 +1010,7 @@ export default function MemberProfile({
 
             <div className="space-y-2">
               <Label htmlFor="languages_spoken">Languages Spoken</Label>
-              {isEditing ? (
+              {isEditing && canEditDemographic ? (
                 <Textarea
                   id="languages_spoken"
                   value={
@@ -677,7 +1041,7 @@ export default function MemberProfile({
 
             <div className="space-y-2">
               <Label htmlFor="home_ownership">Home Ownership</Label>
-              {isEditing ? (
+              {isEditing && canEditDemographic ? (
                 <Select
                   value={formData.home_ownership}
                   onValueChange={(value) =>
@@ -705,7 +1069,7 @@ export default function MemberProfile({
 
             <div className="space-y-2">
               <Label htmlFor="vehicle_ownership">Vehicle Ownership</Label>
-              {isEditing ? (
+              {isEditing && canEditDemographic ? (
                 <Select
                   value={formData.vehicle_ownership}
                   onValueChange={(value) =>
@@ -735,7 +1099,7 @@ export default function MemberProfile({
 
             <div className="space-y-2">
               <Label htmlFor="pet_ownership">Pet Ownership</Label>
-              {isEditing ? (
+              {isEditing && canEditDemographic ? (
                 <Select
                   value={formData.pet_ownership}
                   onValueChange={(value) =>
@@ -760,6 +1124,195 @@ export default function MemberProfile({
               )}
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Verification Card */}
+      <Card
+        className={
+          profileLevel.level === 4
+            ? "border-purple-200"
+            : canEditVerification
+              ? "border-indigo-200"
+              : "border-gray-200 opacity-75"
+        }
+      >
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-indigo-600" />
+              <CardTitle
+                className={!canEditVerification ? "text-gray-500" : ""}
+              >
+                Identity Verification
+              </CardTitle>
+              {profileLevel.level === 4 ? (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : canEditVerification ? (
+                verificationStatus.icon
+              ) : (
+                <Lock className="h-4 w-4 text-gray-400" />
+              )}
+            </div>
+            <Badge
+              variant="outline"
+              className={
+                profileLevel.level === 4
+                  ? "bg-purple-100 text-purple-800 border-purple-200"
+                  : canEditVerification
+                    ? `${verificationStatus.bgColor} ${verificationStatus.color} ${verificationStatus.borderColor}`
+                    : "bg-gray-100 text-gray-600 border-gray-200"
+              }
+            >
+              {profileLevel.level === 4
+                ? "Rank 4 Complete"
+                : canEditVerification
+                  ? verificationStatus.text
+                  : "Locked - Complete Rank 3 First"}
+            </Badge>
+          </div>
+          <CardDescription
+            className={!canEditVerification ? "text-gray-500" : ""}
+          >
+            Identity verification is optional and only required when prizes need
+            to be distributed to ensure proper recipient identification.
+            {!canEditVerification && (
+              <div className="mt-2 text-amber-600 text-sm font-medium">
+                ⚠️ Complete Demographic & Lifestyle section first to unlock
+                verification
+              </div>
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent
+          className={`space-y-4 ${!canEditVerification ? "opacity-50" : ""}`}
+        >
+          {!canEditVerification && (
+            <Alert className="border-amber-200 bg-amber-50 mb-4">
+              <Lock className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                Complete all Demographic & Lifestyle fields to unlock identity
+                verification and advance to Rank 4.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {canEditVerification && (
+            <div className="space-y-4">
+              {/* Current Status */}
+              <div className="p-4 rounded-lg border">
+                <div className="flex items-center gap-2 mb-2">
+                  {verificationStatus.icon}
+                  <span className="font-medium">Verification Status:</span>
+                  <span className={verificationStatus.color}>
+                    {verificationStatus.text}
+                  </span>
+                </div>
+
+                {userData?.verification_status === "pending" && (
+                  <p className="text-sm text-muted-foreground">
+                    Your document has been submitted and is awaiting admin
+                    review. You will be notified once the verification is
+                    complete.
+                  </p>
+                )}
+
+                {userData?.verification_status === "approved" &&
+                  userData?.verification_approved_at && (
+                    <p className="text-sm text-muted-foreground">
+                      Verified on{" "}
+                      {new Date(
+                        userData.verification_approved_at,
+                      ).toLocaleDateString()}
+                    </p>
+                  )}
+
+                {userData?.verification_status === "rejected" && (
+                  <div className="mt-2">
+                    <p className="text-sm text-red-600 font-medium">
+                      Rejection Reason:
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {userData?.verification_rejection_reason ||
+                        "No reason provided"}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Document Upload */}
+              {(userData?.verification_status === "not_submitted" ||
+                userData?.verification_status === "rejected") && (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm font-medium">
+                      Upload Identification Document
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Please upload a clear photo of your Passport or Driver's
+                      License (JPEG, PNG, or PDF, max 5MB)
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="file"
+                      id="verification-document"
+                      accept="image/jpeg,image/png,image/jpg,application/pdf"
+                      onChange={handleDocumentUpload}
+                      disabled={uploadingDocument}
+                      className="hidden"
+                    />
+                    <Button
+                      onClick={() =>
+                        document
+                          .getElementById("verification-document")
+                          ?.click()
+                      }
+                      disabled={uploadingDocument}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {uploadingDocument ? "Uploading..." : "Choose Document"}
+                    </Button>
+                  </div>
+
+                  <Alert className="border-blue-200 bg-blue-50">
+                    <Shield className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">
+                      Your document will be securely stored and only used for
+                      identity verification purposes. It will be reviewed by our
+                      admin team within 1-2 business days.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
+
+              {/* Document Info */}
+              {userData?.verification_documents && (
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <FileText className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      Uploaded Document:
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {userData.verification_documents.fileName}
+                  </p>
+                  {userData.verification_submitted_at && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Submitted on{" "}
+                      {new Date(
+                        userData.verification_submitted_at,
+                      ).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

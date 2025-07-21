@@ -8,15 +8,15 @@ import { createClient } from "../../supabase/server";
 export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
-  const fullName = formData.get("full_name")?.toString() || "";
+  const nickname = formData.get("nickname")?.toString() || "";
   const supabase = await createClient();
   const origin = headers().get("origin");
 
-  if (!email || !password) {
+  if (!email || !password || !nickname) {
     return encodedRedirect(
       "error",
       "/sign-up",
-      "Email and password are required",
+      "Email, password, and nickname are required",
     );
   }
 
@@ -29,7 +29,7 @@ export const signUpAction = async (formData: FormData) => {
     options: {
       emailRedirectTo: `${origin}/auth/callback`,
       data: {
-        full_name: fullName,
+        nickname: nickname,
         email: email,
       },
     },
