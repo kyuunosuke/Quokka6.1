@@ -125,8 +125,8 @@ export default function JoinedCompetitions({
               ? "You haven't completed any competitions yet."
               : "You haven't joined any active competitions yet. Start participating!"}
           </p>
-          <Button asChild>
-            <Link href="/competitions">Browse Competitions</Link>
+          <Button disabled className="opacity-50 cursor-not-allowed">
+            Browse Competitions
           </Button>
         </CardContent>
       </Card>

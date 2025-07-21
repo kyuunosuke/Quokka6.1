@@ -408,45 +408,99 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string | null
+          date_of_birth: string | null
+          education: string | null
           email: string | null
+          ethnicity: string | null
+          first_name: string | null
           full_name: string | null
+          gender: string | null
+          hobbies: string[] | null
+          home_ownership: string | null
           id: string
+          income_range: string | null
+          interests: string[] | null
           is_active: boolean | null
+          languages_spoken: string[] | null
+          last_name: string | null
           location: string | null
+          marital_status: string | null
+          nickname: string | null
+          occupation: string | null
+          pet_ownership: string | null
+          phone: string | null
+          postcode: string | null
           preferences: Json | null
           role: string
           social_links: Json | null
           updated_at: string | null
+          vehicle_ownership: string | null
           website: string | null
         }
         Insert: {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string | null
+          date_of_birth?: string | null
+          education?: string | null
           email?: string | null
+          ethnicity?: string | null
+          first_name?: string | null
           full_name?: string | null
+          gender?: string | null
+          hobbies?: string[] | null
+          home_ownership?: string | null
           id: string
+          income_range?: string | null
+          interests?: string[] | null
           is_active?: boolean | null
+          languages_spoken?: string[] | null
+          last_name?: string | null
           location?: string | null
+          marital_status?: string | null
+          nickname?: string | null
+          occupation?: string | null
+          pet_ownership?: string | null
+          phone?: string | null
+          postcode?: string | null
           preferences?: Json | null
           role?: string
           social_links?: Json | null
           updated_at?: string | null
+          vehicle_ownership?: string | null
           website?: string | null
         }
         Update: {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string | null
+          date_of_birth?: string | null
+          education?: string | null
           email?: string | null
+          ethnicity?: string | null
+          first_name?: string | null
           full_name?: string | null
+          gender?: string | null
+          hobbies?: string[] | null
+          home_ownership?: string | null
           id?: string
+          income_range?: string | null
+          interests?: string[] | null
           is_active?: boolean | null
+          languages_spoken?: string[] | null
+          last_name?: string | null
           location?: string | null
+          marital_status?: string | null
+          nickname?: string | null
+          occupation?: string | null
+          pet_ownership?: string | null
+          phone?: string | null
+          postcode?: string | null
           preferences?: Json | null
           role?: string
           social_links?: Json | null
           updated_at?: string | null
+          vehicle_ownership?: string | null
           website?: string | null
         }
         Relationships: []
