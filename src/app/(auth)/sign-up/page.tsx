@@ -28,7 +28,9 @@ export default async function Signup(props: {
           <UrlProvider>
             <form className="flex flex-col space-y-6">
               <div className="space-y-2 text-center">
-                <h1 className="text-3xl font-semibold tracking-tight">Sign up</h1>
+                <h1 className="text-3xl font-semibold tracking-tight">
+                  Sign up
+                </h1>
                 <p className="text-sm text-muted-foreground">
                   Already have an account?{" "}
                   <Link
@@ -42,14 +44,14 @@ export default async function Signup(props: {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="full_name" className="text-sm font-medium">
-                    Full Name
+                  <Label htmlFor="nickname" className="text-sm font-medium">
+                    Nickname
                   </Label>
                   <Input
-                    id="full_name"
-                    name="full_name"
+                    id="nickname"
+                    name="nickname"
                     type="text"
-                    placeholder="John Doe"
+                    placeholder="JohnD"
                     required
                     className="w-full"
                   />

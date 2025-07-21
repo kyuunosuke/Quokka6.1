@@ -57,6 +57,16 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // Protect member routes
+  if (
+    req.nextUrl.pathname.startsWith("/member") &&
+    !req.nextUrl.pathname.startsWith("/member/login")
+  ) {
+    if (!session) {
+      return NextResponse.redirect(new URL("/member/login", req.url));
+    }
+  }
+
   return res;
 }
 
@@ -71,6 +81,6 @@ export const config = {
      * - public (public files)
      * - admin/login (allow access to admin login)
      */
-    "/((?!_next/static|_next/image|favicon.ico|public|api|admin/login).*)",
+    "/((?!_next/static|_next/image|favicon.ico|public|api|admin/login|member/login).*)",
   ],
 };

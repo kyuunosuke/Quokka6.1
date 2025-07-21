@@ -88,8 +88,8 @@ export default function LikedCompetitions({
             You haven't liked any competitions yet. Start exploring and save
             your favorites!
           </p>
-          <Button asChild>
-            <Link href="/competitions">Browse Competitions</Link>
+          <Button disabled className="opacity-50 cursor-not-allowed">
+            Browse Competitions
           </Button>
         </CardContent>
       </Card>

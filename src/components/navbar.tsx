@@ -32,12 +32,6 @@ export default function Navbar() {
           {user ? (
             <>
               <Link
-                href="/dashboard"
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-              >
-                <Button variant="outline">Dashboard</Button>
-              </Link>
-              <Link
                 href="/member"
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
               >
@@ -48,7 +42,7 @@ export default function Navbar() {
           ) : (
             <>
               <Link
-                href="/sign-in"
+                href="/member/login"
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
               >
                 Sign In

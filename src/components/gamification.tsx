@@ -324,9 +324,8 @@ export default function Gamification({
 
       {/* Octalysis Framework Tabs */}
       <Tabs defaultValue="achievements" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
-          <TabsTrigger value="drives">Core Drives</TabsTrigger>
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
           <TabsTrigger value="rewards">Rewards</TabsTrigger>
         </TabsList>
@@ -444,53 +443,6 @@ export default function Gamification({
           )}
         </TabsContent>
 
-        <TabsContent value="drives" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Octalysis Core Drives</CardTitle>
-              <CardDescription>
-                Your engagement across the 8 core drives of human motivation
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Object.entries(CORE_DRIVES).map(([key, drive]) => {
-                  const IconComponent = drive.icon;
-                  const userAchievements = achievements.filter(
-                    (a) => a.drive === key && a.unlocked,
-                  );
-                  const progress = Math.min(
-                    100,
-                    (userAchievements.length / 3) * 100,
-                  ); // Max 3 achievements per drive
-
-                  return (
-                    <div key={key} className="p-4 border rounded-lg">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div
-                          className={`h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center ${drive.color}`}
-                        >
-                          <IconComponent className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-sm">
-                            {drive.name}
-                          </h4>
-                          <p className="text-xs text-muted-foreground">
-                            {userAchievements.length} achievement
-                            {userAchievements.length !== 1 ? "s" : ""}
-                          </p>
-                        </div>
-                      </div>
-                      <Progress value={progress} className="h-2" />
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="leaderboard" className="space-y-6">
           <Card>
             <CardHeader>
@@ -542,74 +494,23 @@ export default function Gamification({
                 Rewards & Benefits
               </CardTitle>
               <CardDescription>
-                Unlock exclusive perks as you level up
+                Exciting rewards and perks are on the way!
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Crown className="h-5 w-5 text-yellow-600" />
-                      <span className="font-semibold">Level 5 Reward</span>
-                      {userLevel >= 5 ? (
-                        <Badge className="bg-green-100 text-green-800">
-                          Unlocked
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">Locked</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Priority support and exclusive competition previews
-                    </p>
-                  </div>
-
-                  <div className="p-4 border rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Medal className="h-5 w-5 text-blue-600" />
-                      <span className="font-semibold">Level 10 Reward</span>
-                      {userLevel >= 10 ? (
-                        <Badge className="bg-green-100 text-green-800">
-                          Unlocked
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">Locked</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Custom profile badge and competition fee discounts
-                    </p>
-                  </div>
-
-                  <div className="p-4 border rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Star className="h-5 w-5 text-purple-600" />
-                      <span className="font-semibold">Level 20 Reward</span>
-                      <Badge variant="outline">Locked</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      VIP status with exclusive competitions and mentorship
-                    </p>
-                  </div>
-
-                  <div className="p-4 border rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Gem className="h-5 w-5 text-pink-600" />
-                      <span className="font-semibold">Achievement Hunter</span>
-                      {unlockedAchievements.length >= 10 ? (
-                        <Badge className="bg-green-100 text-green-800">
-                          Unlocked
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">Locked</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Special recognition and featured profile showcase
-                    </p>
-                  </div>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center mb-4">
+                  <Rocket className="h-8 w-8 text-blue-600" />
                 </div>
+                <h3 className="text-xl font-semibold mb-2">Coming Soon!</h3>
+                <p className="text-muted-foreground max-w-md">
+                  We're working on an exciting rewards system with exclusive
+                  perks, badges, and benefits for our most active members. Stay
+                  tuned!
+                </p>
+                <Badge variant="outline" className="mt-4">
+                  Feature in Development
+                </Badge>
               </div>
             </CardContent>
           </Card>

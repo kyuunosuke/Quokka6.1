@@ -1056,10 +1056,10 @@ export default function Home() {
               <ArrowUpRight className="ml-2 w-5 h-5" />
             </Link>
             <Link
-              href="/dashboard"
-              className="inline-flex items-center px-8 py-4 text-white border-2 border-white rounded-xl hover:bg-white hover:text-purple-600 transition-colors text-lg font-medium"
+              href="/member"
+              className="inline-flex items-center px-8 py-4 text-gray-700 bg-neuro-light rounded-xl shadow-neuro hover:shadow-neuro-lg transition-all duration-300 text-lg font-medium transform hover:-translate-y-1"
             >
-              View Dashboard
+              View Member Portal
             </Link>
           </div>
         </div>
