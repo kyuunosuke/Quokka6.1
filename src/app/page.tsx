@@ -930,67 +930,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Competition Categories */}
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4 text-gray-900">
-              Popular Categories
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Explore competitions across various creative fields and find your
-              perfect match.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                name: "Design & Art",
-                count: "120+ competitions",
-                color: "from-pink-500 to-rose-500",
-              },
-              {
-                name: "Photography",
-                count: "85+ competitions",
-                color: "from-blue-500 to-cyan-500",
-              },
-              {
-                name: "Writing",
-                count: "95+ competitions",
-                color: "from-green-500 to-emerald-500",
-              },
-              {
-                name: "Video & Film",
-                count: "60+ competitions",
-                color: "from-purple-500 to-violet-500",
-              },
-              {
-                name: "Music & Audio",
-                count: "45+ competitions",
-                color: "from-orange-500 to-red-500",
-              },
-              {
-                name: "Innovation",
-                count: "75+ competitions",
-                color: "from-indigo-500 to-blue-500",
-              },
-            ].map((category, index) => (
-              <div key={`cat-${index}`} className="group cursor-pointer">
-                <div
-                  className={`p-6 bg-gradient-to-br ${category.color} rounded-xl text-white shadow-neuro hover:shadow-neuro-lg transition-all duration-300 transform hover:-translate-y-1`}
-                >
-                  <h3 className="text-xl font-semibold mb-2">
-                    {category.name}
-                  </h3>
-                  <p className="text-white/80">{category.count}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* How It Works */}
       <section className="py-20 bg-neuro-light">
         <div className="container mx-auto px-4">

@@ -25,10 +25,12 @@ import Link from "next/link";
 
 interface LikedCompetitionsProps {
   competitions: any[];
+  title?: string;
 }
 
 export default function LikedCompetitions({
   competitions = [],
+  title = "Liked Competitions",
 }: LikedCompetitionsProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const supabase = createClient();
@@ -100,7 +102,7 @@ export default function LikedCompetitions({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Liked Competitions</h2>
+          <h2 className="text-2xl font-bold">{title}</h2>
           <p className="text-muted-foreground">
             {competitions.length} competition
             {competitions.length !== 1 ? "s" : ""} saved

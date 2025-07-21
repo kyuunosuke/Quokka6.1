@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "../../supabase/client";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "./ui/button";
@@ -25,9 +26,27 @@ export default function Navbar() {
   return (
     <nav className="w-full border-b border-gray-200 bg-white py-2">
       <div className="container mx-auto px-4 flex justify-between items-center">
-        <Link href="/" prefetch className="text-xl font-bold">
-          Logo
+        <Link href="/" prefetch className="flex items-center">
+          <Image
+            src="/images/Q logo.jpg"
+            alt="Logo"
+            width={80}
+            height={80}
+            className="object-contain"
+          />
         </Link>
+
+        {/* Middle section with ChatGPT image */}
+        <div className="flex items-center h-[60px] w-[60px]">
+          <Image
+            src="/images/ChatGPT Image Jul 21, 2025, 02_59_05 PM.png"
+            alt="ChatGPT Image"
+            width={60}
+            height={60}
+            className="object-contain font-[400] text-[16px] -tracking-normal"
+          />
+        </div>
+
         <div className="flex gap-4 items-center">
           {user ? (
             <>
