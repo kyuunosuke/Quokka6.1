@@ -239,7 +239,7 @@ export default function Home() {
           .eq("status", "active")
           .order("created_at", { ascending: false });
 
-        setCompetitions(result.data);
+        setCompetitions(result.data || []);
         setError(result.error);
 
         // If user is authenticated, fetch their saved competitions
@@ -279,7 +279,7 @@ export default function Home() {
     : [];
 
   // Generate categories from actual data
-  const categoryCount = competitionsData.reduce(
+  const categoryCount = (competitionsData || []).reduce(
     (acc: Record<string, number>, comp) => {
       try {
         if (
@@ -305,8 +305,11 @@ export default function Home() {
   );
 
   const categories = [
-    { name: "All Categories", count: competitionsData.length },
-    ...Object.entries(categoryCount).map(([name, count]) => ({ name, count })),
+    { name: "All Categories", count: (competitionsData || []).length },
+    ...Object.entries(categoryCount || {}).map(([name, count]) => ({
+      name,
+      count,
+    })),
   ];
 
   return (
@@ -332,7 +335,7 @@ export default function Home() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                 <div className="text-2xl font-bold">
-                  {competitionsData.length}
+                  {(competitionsData || []).length}
                 </div>
                 <div className="text-sm text-purple-100">
                   Active Competitions
@@ -341,7 +344,7 @@ export default function Home() {
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                 <div className="text-2xl font-bold">
                   $
-                  {competitionsData
+                  {(competitionsData || [])
                     .reduce((sum, comp) => {
                       try {
                         const amount =
@@ -359,7 +362,7 @@ export default function Home() {
               </div>
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                 <div className="text-2xl font-bold">
-                  {competitionsData.reduce((sum, comp) => {
+                  {(competitionsData || []).reduce((sum, comp) => {
                     try {
                       const participants =
                         comp && typeof comp.current_participants === "number"
@@ -375,7 +378,7 @@ export default function Home() {
               </div>
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                 <div className="text-2xl font-bold">
-                  {Object.keys(categoryCount).length}
+                  {Object.keys(categoryCount || {}).length}
                 </div>
                 <div className="text-sm text-purple-100">Categories</div>
               </div>
@@ -435,7 +438,7 @@ export default function Home() {
       <section className="py-12 bg-neuro-light">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {competitionsData
+            {(competitionsData || [])
               .map((competition, index) => {
                 // Check if competition is valid
                 if (
@@ -854,7 +857,7 @@ export default function Home() {
       </section>
 
       {/* Load More Section */}
-      {competitionsData.length === 0 ? (
+      {(competitionsData || []).length === 0 ? (
         <section className="py-16 text-center bg-neuro-light">
           <div className="text-gray-500 text-lg">
             No competitions available at the moment. Check back soon!
