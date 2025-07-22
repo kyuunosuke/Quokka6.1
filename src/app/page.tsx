@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import Footer from "@/components/footer";
 import Hero from "@/components/hero";
 import Navbar from "@/components/navbar";
@@ -138,13 +139,12 @@ function CompetitionDetailsCard({
   );
 }
 import Link from "next/link";
-import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { User } from "@supabase/supabase-js";
 
 export default function Home() {
-  const [competitions, setCompetitions] = useState<any[] | null>(null);
+  const [competitions, setCompetitions] = useState<any[]>([]);
   const [error, setError] = useState<any | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [savedCompetitions, setSavedCompetitions] = useState<Set<string>>(
@@ -212,15 +212,20 @@ export default function Home() {
   };
 
   useEffect(() => {
-    async function fetchData() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUser(user);
+    let mounted = true;
 
-      // Fetch competitions from Supabase
+    async function fetchData() {
       try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (mounted) {
+          setUser(user);
+        }
+
+        // Fetch competitions from Supabase
         const result = await supabase
           .from("competitions")
           .select(
@@ -239,31 +244,49 @@ export default function Home() {
           .eq("status", "active")
           .order("created_at", { ascending: false });
 
-        setCompetitions(result.data || []);
-        setError(result.error);
+        if (result.error) {
+          console.error("Supabase error:", result.error);
+          if (mounted) {
+            setError(result.error);
+          }
+          return;
+        }
+        if (!result.data) {
+          console.warn("Supabase returned no data.");
+        }
+        if (mounted) {
+          setCompetitions(result.data || []);
+        }
 
         // If user is authenticated, fetch their saved competitions
-        if (user) {
+        if (user && mounted) {
           const savedResult = await supabase
             .from("saved_competitions")
             .select("competition_id")
             .eq("user_id", user.id);
 
-          if (savedResult.data) {
+          if (savedResult.data && mounted) {
             const savedIds = new Set(
               savedResult.data.map((item) => item.competition_id),
             );
             setSavedCompetitions(savedIds);
           }
         }
-      } catch (fetchError) {
-        console.error("Error fetching competitions:", fetchError);
-        setError(fetchError);
+      } catch (error) {
+        console.error("Fetch error:", error);
+        if (mounted) {
+          setError(error);
+          setCompetitions([]); // Set empty array to prevent undefined issues
+        }
       }
     }
 
     fetchData();
-  }, []);
+
+    return () => {
+      mounted = false;
+    };
+  }, []); // Empty dependency array
 
   if (error) {
     console.error("Error fetching competitions:", error);
@@ -273,13 +296,29 @@ export default function Home() {
   console.log("Competitions data:", competitions);
   console.log("Error:", error);
 
+  // Check for invalid competition data early
+  if (!Array.isArray(competitions)) {
+    return (
+      <div className="min-h-screen bg-neuro-light flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-red-600 mb-2">
+            Error: Invalid competition data
+          </h2>
+          <p className="text-gray-600">
+            Competition data is not in the expected format
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Ensure we have valid data and filter out null/undefined entries
-  const competitionsData = Array.isArray(competitions)
-    ? competitions.filter((comp) => comp && typeof comp === "object" && comp.id)
-    : [];
+  const competitionsData = competitions.filter(
+    (comp) => comp && typeof comp === "object" && comp.id,
+  );
 
   // Generate categories from actual data
-  const categoryCount = (competitionsData || []).reduce(
+  const categoryCount = competitionsData.reduce(
     (acc: Record<string, number>, comp) => {
       try {
         if (
@@ -305,12 +344,25 @@ export default function Home() {
   );
 
   const categories = [
-    { name: "All Categories", count: (competitionsData || []).length },
-    ...Object.entries(categoryCount || {}).map(([name, count]) => ({
+    { name: "All Categories", count: competitionsData.length },
+    ...Object.entries(categoryCount).map(([name, count]) => ({
       name,
       count,
     })),
   ];
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-neuro-light flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-red-600 mb-2">
+            Something went wrong
+          </h2>
+          <p className="text-gray-600">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neuro-light">
@@ -335,7 +387,7 @@ export default function Home() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                 <div className="text-2xl font-bold">
-                  {(competitionsData || []).length}
+                  {competitionsData.length}
                 </div>
                 <div className="text-sm text-purple-100">
                   Active Competitions
@@ -344,7 +396,7 @@ export default function Home() {
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                 <div className="text-2xl font-bold">
                   $
-                  {(competitionsData || [])
+                  {competitionsData
                     .reduce((sum, comp) => {
                       try {
                         const amount =
@@ -362,7 +414,7 @@ export default function Home() {
               </div>
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                 <div className="text-2xl font-bold">
-                  {(competitionsData || []).reduce((sum, comp) => {
+                  {competitionsData.reduce((sum, comp) => {
                     try {
                       const participants =
                         comp && typeof comp.current_participants === "number"
@@ -378,7 +430,7 @@ export default function Home() {
               </div>
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                 <div className="text-2xl font-bold">
-                  {Object.keys(categoryCount || {}).length}
+                  {Object.keys(categoryCount).length}
                 </div>
                 <div className="text-sm text-purple-100">Categories</div>
               </div>
@@ -438,7 +490,7 @@ export default function Home() {
       <section className="py-12 bg-neuro-light">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {(competitionsData || [])
+            {competitionsData
               .map((competition, index) => {
                 // Check if competition is valid
                 if (
@@ -857,7 +909,7 @@ export default function Home() {
       </section>
 
       {/* Load More Section */}
-      {(competitionsData || []).length === 0 ? (
+      {competitionsData.length === 0 ? (
         <section className="py-16 text-center bg-neuro-light">
           <div className="text-gray-500 text-lg">
             No competitions available at the moment. Check back soon!

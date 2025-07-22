@@ -192,3 +192,58 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_participant_count_trigger
     AFTER INSERT OR UPDATE OR DELETE ON public.competition_submissions
     FOR EACH ROW EXECUTE FUNCTION update_competition_participant_count();
+
+-- Create policy to allow read access for authenticated users
+CREATE POLICY "Allow read for authenticated users"
+ON public.competitions
+AS PERMISSIVE
+FOR SELECT
+TO authenticated
+USING (true);
+
+-- Create policy to allow public read access for active competitions
+CREATE POLICY "Allow public read for active competitions"
+ON public.competitions
+AS PERMISSIVE
+FOR SELECT
+TO public
+USING (status = 'active');
+
+-- Create policies for other tables
+CREATE POLICY "Allow read for competition_requirements_selected"
+ON public.competition_requirements_selected
+AS PERMISSIVE
+FOR SELECT
+TO public
+USING (true);
+
+-- Create policies for requirement_options table if it exists
+-- Note: This table might not exist yet, so we'll create it if needed
+CREATE TABLE IF NOT EXISTS public.requirement_options (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name text NOT NULL,
+    description text,
+    category text,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+
+CREATE POLICY "Allow read for requirement_options"
+ON public.requirement_options
+AS PERMISSIVE
+FOR SELECT
+TO public
+USING (true);
+
+-- Create competition_requirements_selected table if it doesn't exist
+CREATE TABLE IF NOT EXISTS public.competition_requirements_selected (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    competition_id uuid NOT NULL REFERENCES public.competitions(id) ON DELETE CASCADE,
+    requirement_option_id uuid NOT NULL REFERENCES public.requirement_options(id) ON DELETE CASCADE,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+    UNIQUE(competition_id, requirement_option_id)
+);
+
+-- Enable realtime for new tables
+ALTER PUBLICATION supabase_realtime ADD TABLE public.requirement_options;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.competition_requirements_selected;
