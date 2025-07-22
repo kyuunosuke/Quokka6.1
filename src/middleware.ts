@@ -67,6 +67,27 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // Protect client routes
+  if (
+    req.nextUrl.pathname.startsWith("/client") &&
+    !req.nextUrl.pathname.startsWith("/client/login")
+  ) {
+    if (!session) {
+      return NextResponse.redirect(new URL("/client/login", req.url));
+    }
+
+    // Check if user has client role
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    if (profile?.role !== "client") {
+      return NextResponse.redirect(new URL("/client/login", req.url));
+    }
+  }
+
   return res;
 }
 
@@ -80,7 +101,10 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public (public files)
      * - admin/login (allow access to admin login)
+     * - member/login (allow access to member login)
+     * - client/login (allow access to client login)
+     * - client/signup (allow access to client signup)
      */
-    "/((?!_next/static|_next/image|favicon.ico|public|api|admin/login|member/login).*)",
+    "/((?!_next/static|_next/image|favicon.ico|public|api|admin/login|member/login|client/login|client/signup).*)",
   ],
 };

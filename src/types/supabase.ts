@@ -38,6 +38,138 @@ export type Database = {
         }
         Relationships: []
       }
+      client_submissions: {
+        Row: {
+          admin_notes: string | null
+          approved_at: string | null
+          banner_url: string | null
+          category: string
+          client_id: string
+          company_description: string | null
+          company_name: string | null
+          created_at: string | null
+          description: string | null
+          detailed_description: string | null
+          difficulty_level: string | null
+          end_date: string
+          entry_fee: number | null
+          id: string
+          is_team_competition: boolean | null
+          judging_end_date: string | null
+          judging_start_date: string | null
+          max_participants: number | null
+          max_team_size: number | null
+          min_team_size: number | null
+          organizer_email: string
+          organizer_name: string
+          organizer_website: string | null
+          prize_amount: number | null
+          prize_currency: string | null
+          prize_description: string | null
+          published_at: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          rules: string | null
+          start_date: string
+          status: string | null
+          subcategory: string | null
+          submission_deadline: string
+          submitted_at: string | null
+          tags: string[] | null
+          terms_conditions_url: string | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string | null
+          winner_announcement_date: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          approved_at?: string | null
+          banner_url?: string | null
+          category: string
+          client_id: string
+          company_description?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          detailed_description?: string | null
+          difficulty_level?: string | null
+          end_date: string
+          entry_fee?: number | null
+          id?: string
+          is_team_competition?: boolean | null
+          judging_end_date?: string | null
+          judging_start_date?: string | null
+          max_participants?: number | null
+          max_team_size?: number | null
+          min_team_size?: number | null
+          organizer_email: string
+          organizer_name: string
+          organizer_website?: string | null
+          prize_amount?: number | null
+          prize_currency?: string | null
+          prize_description?: string | null
+          published_at?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          rules?: string | null
+          start_date: string
+          status?: string | null
+          subcategory?: string | null
+          submission_deadline: string
+          submitted_at?: string | null
+          tags?: string[] | null
+          terms_conditions_url?: string | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string | null
+          winner_announcement_date?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          approved_at?: string | null
+          banner_url?: string | null
+          category?: string
+          client_id?: string
+          company_description?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          detailed_description?: string | null
+          difficulty_level?: string | null
+          end_date?: string
+          entry_fee?: number | null
+          id?: string
+          is_team_competition?: boolean | null
+          judging_end_date?: string | null
+          judging_start_date?: string | null
+          max_participants?: number | null
+          max_team_size?: number | null
+          min_team_size?: number | null
+          organizer_email?: string
+          organizer_name?: string
+          organizer_website?: string | null
+          prize_amount?: number | null
+          prize_currency?: string | null
+          prize_description?: string | null
+          published_at?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          rules?: string | null
+          start_date?: string
+          status?: string | null
+          subcategory?: string | null
+          submission_deadline?: string
+          submitted_at?: string | null
+          tags?: string[] | null
+          terms_conditions_url?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string | null
+          winner_announcement_date?: string | null
+        }
+        Relationships: []
+      }
       competition_categories: {
         Row: {
           color_scheme: string | null

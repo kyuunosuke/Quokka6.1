@@ -181,6 +181,127 @@ export default function SideNav({ onFilterChange, activeTab }: SideNavProps) {
             </div>
           </CardContent>
         </Card>
+      ) : activeTab === "client-submissions" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Filter className="h-5 w-5" />
+              Submission Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Search */}
+            <div className="space-y-2">
+              <Label htmlFor="search">Search Submissions</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="search"
+                  placeholder="Search by title, organizer..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="submitted">Submitted</SelectItem>
+                  <SelectItem value="under_review">Under Review</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Category Filter */}
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="Technology">Technology</SelectItem>
+                  <SelectItem value="Design">Design</SelectItem>
+                  <SelectItem value="Business">Business</SelectItem>
+                  <SelectItem value="Marketing">Marketing</SelectItem>
+                  <SelectItem value="Education">Education</SelectItem>
+                  <SelectItem value="Health">Health</SelectItem>
+                  <SelectItem value="Environment">Environment</SelectItem>
+                  <SelectItem value="Arts">Arts</SelectItem>
+                  <SelectItem value="Sports">Sports</SelectItem>
+                  <SelectItem value="Gaming">Gaming</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sort Options */}
+            <div className="space-y-2">
+              <Label>Sort By</Label>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created_at">Created Date</SelectItem>
+                  <SelectItem value="updated_at">Updated Date</SelectItem>
+                  <SelectItem value="submitted_at">Submitted Date</SelectItem>
+                  <SelectItem value="title">Title</SelectItem>
+                  <SelectItem value="status">Status</SelectItem>
+                  <SelectItem value="category">Category</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sort Order */}
+            <div className="space-y-2">
+              <Label>Sort Order</Label>
+              <div className="flex gap-2">
+                <Button
+                  variant={sortOrder === "asc" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSortOrder("asc")}
+                  className="flex-1"
+                >
+                  <SortAsc className="h-4 w-4 mr-1" />
+                  Ascending
+                </Button>
+                <Button
+                  variant={sortOrder === "desc" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSortOrder("desc")}
+                  className="flex-1"
+                >
+                  <SortDesc className="h-4 w-4 mr-1" />
+                  Descending
+                </Button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-4">
+              <Button onClick={handleFilterChange} className="flex-1">
+                Apply Filters
+              </Button>
+              <Button variant="outline" onClick={resetFilters}>
+                Reset
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <Card>
           <CardHeader>

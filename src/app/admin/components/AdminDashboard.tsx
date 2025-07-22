@@ -6,6 +6,7 @@ import CompetitionModule from "./CompetitionModule";
 import GameManagement from "./GameManagement";
 import { Toaster } from "@/components/ui/toaster";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ClientSubmissionManagement from "./ClientSubmissionManagement";
 
 export default function AdminDashboard() {
   const [filters, setFilters] = useState({
@@ -26,14 +27,20 @@ export default function AdminDashboard() {
       <SideNav onFilterChange={handleFilterChange} activeTab={activeTab} />
       <main className="flex-1 p-6 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="competitions">
               Competition Management
+            </TabsTrigger>
+            <TabsTrigger value="client-submissions">
+              Client Submissions
             </TabsTrigger>
             <TabsTrigger value="games">Game Management</TabsTrigger>
           </TabsList>
           <TabsContent value="competitions" className="mt-0">
             <CompetitionModule filters={filters} />
+          </TabsContent>
+          <TabsContent value="client-submissions" className="mt-0">
+            <ClientSubmissionManagement />
           </TabsContent>
           <TabsContent value="games" className="mt-0">
             <GameManagement />
