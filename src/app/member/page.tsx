@@ -39,6 +39,7 @@ export default function MemberDashboard() {
   const [user, setUser] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
   const [savedCompetitions, setSavedCompetitions] = useState<any[]>([]);
+  const [pastSavedCompetitions, setPastSavedCompetitions] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -87,7 +88,26 @@ export default function MemberDashboard() {
           )
           .eq("user_id", user.id);
 
-        setSavedCompetitions(savedCompetitions || []);
+        // Filter saved competitions based on end date
+        const now = new Date();
+        const activeSavedCompetitions = (savedCompetitions || []).filter(
+          (item) => {
+            if (!item.competitions?.end_date) return true;
+            const endDate = new Date(item.competitions.end_date);
+            return endDate > now;
+          },
+        );
+
+        const pastSavedCompetitions = (savedCompetitions || []).filter(
+          (item) => {
+            if (!item.competitions?.end_date) return false;
+            const endDate = new Date(item.competitions.end_date);
+            return endDate <= now;
+          },
+        );
+
+        setSavedCompetitions(activeSavedCompetitions);
+        setPastSavedCompetitions(pastSavedCompetitions);
 
         const { data: submissions } = await supabase
           .from("competition_submissions")
@@ -220,6 +240,7 @@ export default function MemberDashboard() {
         {/* Main Content Tabs */}
         <MemberTabs
           savedCompetitions={savedCompetitions}
+          pastSavedCompetitions={pastSavedCompetitions}
           submissions={submissions}
           user={user}
           userData={userData}
@@ -232,12 +253,14 @@ export default function MemberDashboard() {
 
 function MemberTabs({
   savedCompetitions,
+  pastSavedCompetitions,
   submissions,
   user,
   userData,
   profileLevel,
 }: {
   savedCompetitions: any[];
+  pastSavedCompetitions: any[];
   submissions: any[];
   user: any;
   userData: any;
@@ -333,12 +356,23 @@ function MemberTabs({
           </TabsContent>
 
           <TabsContent value="past" className="space-y-6">
+            {/* Past Joined Competitions */}
             <JoinedCompetitions
               submissions={submissions.filter(
                 (s) => s.competitions?.status === "completed",
               )}
-              title="Past Competitions"
+              title="Past Joined Competitions"
             />
+
+            {/* Past Liked Competitions */}
+            {pastSavedCompetitions.length > 0 && (
+              <div className="mt-8">
+                <LikedCompetitions
+                  competitions={pastSavedCompetitions}
+                  title="Past Liked Competitions"
+                />
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="gamification" className="space-y-6">

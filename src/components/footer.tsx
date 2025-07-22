@@ -7,37 +7,7 @@ export default function Footer() {
   return (
     <footer className="bg-neuro-light border-t border-gray-200">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-          {/* Competitions Column */}
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-4">Competitions</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link
-                  href="/home"
-                  className="text-gray-600 hover:text-purple-600"
-                >
-                  Browse All
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-gray-600 hover:text-purple-600">
-                  Design & Art
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-gray-600 hover:text-purple-600">
-                  Photography
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-gray-600 hover:text-purple-600">
-                  Writing
-                </Link>
-              </li>
-            </ul>
-          </div>
-
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-12">
           {/* Community Column */}
           <div>
             <h3 className="font-semibold text-gray-900 mb-4">Community</h3>
@@ -57,11 +27,6 @@ export default function Footer() {
                   Forum
                 </Link>
               </li>
-              <li>
-                <Link href="#" className="text-gray-600 hover:text-purple-600">
-                  Events
-                </Link>
-              </li>
             </ul>
           </div>
 
@@ -70,7 +35,10 @@ export default function Footer() {
             <h3 className="font-semibold text-gray-900 mb-4">Support</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-gray-600 hover:text-purple-600">
+                <Link
+                  href="/help"
+                  className="text-gray-600 hover:text-purple-600"
+                >
                   Help Center
                 </Link>
               </li>
@@ -80,12 +48,18 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-purple-600">
+                <Link
+                  href="/contact"
+                  className="text-gray-600 hover:text-purple-600"
+                >
                   Contact Us
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-purple-600">
+                <Link
+                  href="/faq"
+                  className="text-gray-600 hover:text-purple-600"
+                >
                   FAQ
                 </Link>
               </li>
@@ -97,23 +71,19 @@ export default function Footer() {
             <h3 className="font-semibold text-gray-900 mb-4">Legal</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-gray-600 hover:text-purple-600">
+                <Link
+                  href="/privacy"
+                  className="text-gray-600 hover:text-purple-600"
+                >
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-600 hover:text-purple-600">
+                <Link
+                  href="/terms"
+                  className="text-gray-600 hover:text-purple-600"
+                >
                   Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-gray-600 hover:text-purple-600">
-                  Competition Rules
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-gray-600 hover:text-purple-600">
-                  Cookies
                 </Link>
               </li>
             </ul>

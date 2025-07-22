@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import Footer from "@/components/footer";
 import Hero from "@/components/hero";
 import Navbar from "@/components/navbar";
@@ -138,13 +139,12 @@ function CompetitionDetailsCard({
   );
 }
 import Link from "next/link";
-import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { User } from "@supabase/supabase-js";
 
 export default function Home() {
-  const [competitions, setCompetitions] = useState<any[] | null>(null);
+  const [competitions, setCompetitions] = useState<any[]>([]);
   const [error, setError] = useState<any | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [savedCompetitions, setSavedCompetitions] = useState<Set<string>>(
@@ -212,15 +212,20 @@ export default function Home() {
   };
 
   useEffect(() => {
-    async function fetchData() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUser(user);
+    let mounted = true;
 
-      // Fetch competitions from Supabase
+    async function fetchData() {
       try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (mounted) {
+          setUser(user);
+        }
+
+        // Fetch competitions from Supabase
         const result = await supabase
           .from("competitions")
           .select(
@@ -239,31 +244,49 @@ export default function Home() {
           .eq("status", "active")
           .order("created_at", { ascending: false });
 
-        setCompetitions(result.data);
-        setError(result.error);
+        if (result.error) {
+          console.error("Supabase error:", result.error);
+          if (mounted) {
+            setError(result.error);
+          }
+          return;
+        }
+        if (!result.data) {
+          console.warn("Supabase returned no data.");
+        }
+        if (mounted) {
+          setCompetitions(result.data || []);
+        }
 
         // If user is authenticated, fetch their saved competitions
-        if (user) {
+        if (user && mounted) {
           const savedResult = await supabase
             .from("saved_competitions")
             .select("competition_id")
             .eq("user_id", user.id);
 
-          if (savedResult.data) {
+          if (savedResult.data && mounted) {
             const savedIds = new Set(
               savedResult.data.map((item) => item.competition_id),
             );
             setSavedCompetitions(savedIds);
           }
         }
-      } catch (fetchError) {
-        console.error("Error fetching competitions:", fetchError);
-        setError(fetchError);
+      } catch (error) {
+        console.error("Fetch error:", error);
+        if (mounted) {
+          setError(error);
+          setCompetitions([]); // Set empty array to prevent undefined issues
+        }
       }
     }
 
     fetchData();
-  }, []);
+
+    return () => {
+      mounted = false;
+    };
+  }, []); // Empty dependency array
 
   if (error) {
     console.error("Error fetching competitions:", error);
@@ -273,10 +296,26 @@ export default function Home() {
   console.log("Competitions data:", competitions);
   console.log("Error:", error);
 
+  // Check for invalid competition data early
+  if (!Array.isArray(competitions)) {
+    return (
+      <div className="min-h-screen bg-neuro-light flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-red-600 mb-2">
+            Error: Invalid competition data
+          </h2>
+          <p className="text-gray-600">
+            Competition data is not in the expected format
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Ensure we have valid data and filter out null/undefined entries
-  const competitionsData = Array.isArray(competitions)
-    ? competitions.filter((comp) => comp && typeof comp === "object" && comp.id)
-    : [];
+  const competitionsData = competitions.filter(
+    (comp) => comp && typeof comp === "object" && comp.id,
+  );
 
   // Generate categories from actual data
   const categoryCount = competitionsData.reduce(
@@ -306,8 +345,24 @@ export default function Home() {
 
   const categories = [
     { name: "All Categories", count: competitionsData.length },
-    ...Object.entries(categoryCount).map(([name, count]) => ({ name, count })),
+    ...Object.entries(categoryCount).map(([name, count]) => ({
+      name,
+      count,
+    })),
   ];
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-neuro-light flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-red-600 mb-2">
+            Something went wrong
+          </h2>
+          <p className="text-gray-600">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neuro-light">
@@ -896,23 +951,51 @@ export default function Home() {
             {[
               {
                 icon: <Trophy className="w-6 h-6" />,
-                title: "Amazing Prizes",
-                description: "Win cash, products, and exclusive opportunities",
+                title: "Centralised Competition Hub",
+                description:
+                  "Discover all active competitions in one place. Easily search and filter by category, location, prize type, deadline, and more — no need to scour multiple websites.",
               },
               {
                 icon: <Target className="w-6 h-6" />,
-                title: "Fair Judging",
-                description: "Transparent evaluation by industry experts",
+                title: "Seamless User Experience",
+                description:
+                  "Enjoy an intuitive dashboard where you can track all your entries, see competition statuses, and view winner announcements. Receive real-time alerts and email notifications for new competitions and winning results.",
               },
               {
                 icon: <Users className="w-6 h-6" />,
-                title: "Global Community",
-                description: "Connect with creators from around the world",
+                title: "Single Unified Profile",
+                description:
+                  "Create a single user profile to enter multiple competitions without repeatedly filling out your details — saving time and effort.",
               },
               {
                 icon: <Star className="w-6 h-6" />,
-                title: "All Skill Levels",
-                description: "Competitions for beginners to professionals",
+                title: "Engaging Skill-Based Games",
+                description:
+                  "More than luck. Participate in fun, skill-based competitions that reward creativity, knowledge, or strategy — making every entry more engaging.",
+              },
+              {
+                icon: <Trophy className="w-6 h-6" />,
+                title: "Clear and Concise Competition Summaries",
+                description:
+                  "No more wading through lengthy terms and conditions. We highlight key rules, eligibility, and entry steps so you know exactly what's required before joining.",
+              },
+              {
+                icon: <Target className="w-6 h-6" />,
+                title: "Privacy-First Participation",
+                description:
+                  "You're in control. Choose what information to share for each competition — your data, your decision.",
+              },
+              {
+                icon: <Users className="w-6 h-6" />,
+                title: "Transparent and Legitimacy",
+                description:
+                  "We're committed to fairness. Timestamped draw, browse public results, and see real prize deliveries. Every competition undergoes proper checks for legitimacy and audit.",
+              },
+              {
+                icon: <Star className="w-6 h-6" />,
+                title: "Bonus: Reward",
+                description:
+                  "Level up and unlock perks as you participate more. Be part of a growing community of compers who love the thrill of winning.",
               },
             ].map((feature, index) => (
               <div
@@ -924,67 +1007,6 @@ export default function Home() {
                   {feature.title}
                 </h3>
                 <p className="text-gray-600">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Competition Categories */}
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4 text-gray-900">
-              Popular Categories
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Explore competitions across various creative fields and find your
-              perfect match.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                name: "Design & Art",
-                count: "120+ competitions",
-                color: "from-pink-500 to-rose-500",
-              },
-              {
-                name: "Photography",
-                count: "85+ competitions",
-                color: "from-blue-500 to-cyan-500",
-              },
-              {
-                name: "Writing",
-                count: "95+ competitions",
-                color: "from-green-500 to-emerald-500",
-              },
-              {
-                name: "Video & Film",
-                count: "60+ competitions",
-                color: "from-purple-500 to-violet-500",
-              },
-              {
-                name: "Music & Audio",
-                count: "45+ competitions",
-                color: "from-orange-500 to-red-500",
-              },
-              {
-                name: "Innovation",
-                count: "75+ competitions",
-                color: "from-indigo-500 to-blue-500",
-              },
-            ].map((category, index) => (
-              <div key={`cat-${index}`} className="group cursor-pointer">
-                <div
-                  className={`p-6 bg-gradient-to-br ${category.color} rounded-xl text-white shadow-neuro hover:shadow-neuro-lg transition-all duration-300 transform hover:-translate-y-1`}
-                >
-                  <h3 className="text-xl font-semibold mb-2">
-                    {category.name}
-                  </h3>
-                  <p className="text-white/80">{category.count}</p>
-                </div>
               </div>
             ))}
           </div>
