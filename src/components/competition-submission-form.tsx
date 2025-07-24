@@ -295,17 +295,17 @@ export default function CompetitionSubmissionForm({
 
       let result;
       if (submission?.id) {
-        // Update existing submission - need to reference competitions table
+        // Update existing submission
         result = await supabase
-          .from("competitions")
+          .from("client_submissions")
           .update(submissionData)
           .eq("id", submission.id)
           .select()
           .single();
       } else {
-        // Create new submission - need to reference competitions table
+        // Create new submission
         result = await supabase
-          .from("competitions")
+          .from("client_submissions")
           .insert(submissionData)
           .select()
           .single();
@@ -315,35 +315,28 @@ export default function CompetitionSubmissionForm({
         throw result.error;
       }
 
-      // Save selected requirements - always handle this section
-      if (result.data) {
+      // Save selected requirements if any
+      if (formData.selected_requirements.length > 0 && result.data) {
         // First, delete existing requirements for this submission
-        const { error: deleteError } = await supabase
+        await supabase
           .from("competition_requirements_selected")
           .delete()
           .eq("competition_id", result.data.id);
 
-        if (deleteError) {
-          console.error("Error deleting existing requirements:", deleteError);
-        }
+        // Then insert new requirements
+        const requirementInserts = formData.selected_requirements.map(
+          (reqId) => ({
+            competition_id: result.data.id,
+            requirement_option_id: reqId,
+          }),
+        );
 
-        // Then insert new requirements if any are selected
-        if (formData.selected_requirements.length > 0) {
-          const requirementInserts = formData.selected_requirements.map(
-            (reqId) => ({
-              competition_id: result.data.id,
-              requirement_option_id: reqId,
-            }),
-          );
+        const { error: reqError } = await supabase
+          .from("competition_requirements_selected")
+          .insert(requirementInserts);
 
-          const { error: reqError } = await supabase
-            .from("competition_requirements_selected")
-            .insert(requirementInserts);
-
-          if (reqError) {
-            console.error("Error saving requirements:", reqError);
-            // Don't fail the entire submission, but log the error
-          }
+        if (reqError) {
+          console.error("Error saving requirements:", reqError);
         }
       }
 
@@ -1055,47 +1048,127 @@ export default function CompetitionSubmissionForm({
               </p>
             </div>
 
-            {requirementOptions.length > 0 ? (
-              <div className="space-y-2">
-                <div className="grid grid-cols-1 gap-3">
-                  {requirementOptions.map((requirement) => (
-                    <div
-                      key={requirement.id}
-                      className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50"
-                    >
-                      <Checkbox
-                        id={`requirement-${requirement.id}`}
-                        checked={formData.selected_requirements.includes(
-                          requirement.id,
-                        )}
-                        onCheckedChange={() =>
-                          handleRequirementToggle(requirement.id)
-                        }
-                        disabled={!canEdit}
-                        className="mt-0.5"
-                      />
-                      <div className="grid gap-1.5 leading-none flex-1">
-                        <Label
-                          htmlFor={`requirement-${requirement.id}`}
-                          className="text-sm font-medium leading-none cursor-pointer"
-                        >
-                          {requirement.name}
-                        </Label>
-                        {requirement.description && (
-                          <p className="text-xs text-muted-foreground">
-                            {requirement.description}
-                          </p>
-                        )}
-                      </div>
+            <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  {
+                    id: "1",
+                    name: "Age restriction 18+",
+                    description: "Participants must be 18 years or older",
+                  },
+                  {
+                    id: "2",
+                    name: "Australian resident",
+                    description: "Participants must be Australian residents",
+                  },
+                  {
+                    id: "3",
+                    name: "One entry per person",
+                    description: "Each person can only enter once",
+                  },
+                  {
+                    id: "4",
+                    name: "Exclusion of employees or promoter/agencies",
+                    description: "Employees and agency staff are excluded",
+                  },
+                  {
+                    id: "5",
+                    name: "Sharing of email address",
+                    description: "Email address must be provided",
+                  },
+                  {
+                    id: "6",
+                    name: "Sharing of personal information",
+                    description: "Personal information sharing required",
+                  },
+                  {
+                    id: "7",
+                    name: "Like, share or comment on social media",
+                    description: "Social media engagement required",
+                  },
+                  {
+                    id: "8",
+                    name: "Join a group or page",
+                    description: "Must join specified group or page",
+                  },
+                  {
+                    id: "9",
+                    name: "Watch a video or ads",
+                    description: "Must watch required video content",
+                  },
+                  {
+                    id: "10",
+                    name: "Refer or tag a friend",
+                    description: "Must refer or tag friends",
+                  },
+                  {
+                    id: "11",
+                    name: "Join newsletter",
+                    description: "Must subscribe to newsletter",
+                  },
+                  {
+                    id: "12",
+                    name: "Download an app",
+                    description: "Must download specified application",
+                  },
+                  {
+                    id: "13",
+                    name: "Leave a review",
+                    description: "Must leave a review",
+                  },
+                  {
+                    id: "14",
+                    name: "Participate in an event/poll",
+                    description: "Must participate in event or poll",
+                  },
+                  {
+                    id: "15",
+                    name: "Sign-up for a site",
+                    description: "Must register for specified website",
+                  },
+                  {
+                    id: "16",
+                    name: "Complete a survey",
+                    description: "Must complete required survey",
+                  },
+                  {
+                    id: "17",
+                    name: "Requires to make a purchase or transaction (product, service or subscription)",
+                    description: "Purchase or transaction required",
+                  },
+                ].map((requirement) => (
+                  <div
+                    key={requirement.id}
+                    className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50"
+                  >
+                    <Checkbox
+                      id={`requirement-${requirement.id}`}
+                      checked={formData.selected_requirements.includes(
+                        requirement.id,
+                      )}
+                      onCheckedChange={() =>
+                        handleRequirementToggle(requirement.id)
+                      }
+                      disabled={!canEdit}
+                      className="mt-0.5"
+                    />
+                    <div className="grid gap-1.5 leading-none flex-1">
+                      <Label
+                        htmlFor={`requirement-${requirement.id}`}
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        {requirement.name}
+                      </Label>
+                      {requirement.description && (
+                        <p className="text-xs text-muted-foreground">
+                          {requirement.description}
+                        </p>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            ) : (
-              <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-gray-50">
-                Loading requirements options...
-              </div>
-            )}
+            </div>
           </div>
 
           <Separator />

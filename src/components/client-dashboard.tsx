@@ -51,24 +51,105 @@ export default function ClientDashboard({
   const supabase = createClient();
   const router = useRouter();
 
+  // Safety check to prevent rendering with invalid data
   useEffect(() => {
+    console.log("[DEBUG] ClientDashboard mounted with:", { user, userData });
+
+    if (!user || !user.id) {
+      console.error("[ERROR] ClientDashboard: Invalid user data", user);
+      router.push("/client/login");
+      return;
+    }
+
     fetchSubmissions();
-  }, []);
+  }, [user?.id]); // Only depend on user.id to prevent infinite loops
 
   const fetchSubmissions = async () => {
     try {
+      console.log("[DEBUG] Starting fetchSubmissions");
+      console.log("[DEBUG] User object:", user);
+      console.log("[DEBUG] User ID:", user?.id);
+
+      if (!user || !user.id) {
+        console.error("[ERROR] User or user.id is null/undefined");
+        setSubmissions([]);
+        return;
+      }
+
+      // Test Supabase connection first
+      try {
+        console.log("[DEBUG] Testing Supabase connection");
+        const testResult = await supabase
+          .from("client_submissions")
+          .select("count", { count: "exact", head: true });
+        console.log("[DEBUG] Connection test result:", testResult);
+
+        if (
+          testResult.error &&
+          testResult.error.message.includes("not configured")
+        ) {
+          console.error("[ERROR] Supabase client not properly configured");
+          setSubmissions([]);
+          return;
+        }
+      } catch (connectionError) {
+        console.error(
+          "[ERROR] Supabase connection test failed:",
+          connectionError,
+        );
+        setSubmissions([]);
+        return;
+      }
+
+      console.log("[DEBUG] Querying client_submissions table");
       const { data, error } = await supabase
         .from("client_submissions")
         .select("*")
         .eq("client_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setSubmissions(data || []);
+      console.log("[DEBUG] Query result - data:", data);
+      console.log("[DEBUG] Query result - error:", error);
+
+      if (error) {
+        console.error("[ERROR] Supabase query error:", error);
+
+        // Handle specific error types
+        if (error.message.includes("not configured")) {
+          console.error("[ERROR] Database not configured properly");
+          setSubmissions([]);
+          return;
+        }
+
+        if (error.code === "PGRST116") {
+          console.error("[ERROR] Table 'client_submissions' does not exist");
+          setSubmissions([]);
+          return;
+        }
+
+        throw error;
+      }
+
+      const submissions = data || [];
+      console.log(
+        "[DEBUG] Successfully fetched submissions:",
+        submissions.length,
+        "items",
+      );
+      setSubmissions(submissions);
     } catch (error) {
-      console.error("Error fetching submissions:", error);
+      console.error("[ERROR] Error fetching submissions:", error);
+      console.error("[ERROR] Error details:", {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+        stack: error?.stack,
+      });
+      setSubmissions([]);
     } finally {
       setLoading(false);
+      console.log("[DEBUG] fetchSubmissions completed");
     }
   };
 
@@ -109,16 +190,51 @@ export default function ClientDashboard({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    try {
+      if (!dateString) {
+        console.warn("[WARN] formatDate: dateString is null/undefined");
+        return "No date";
+      }
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.warn("[WARN] formatDate: Invalid date string:", dateString);
+        return "Invalid date";
+      }
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch (error) {
+      console.error(
+        "[ERROR] formatDate error:",
+        error,
+        "dateString:",
+        dateString,
+      );
+      return "Date error";
+    }
   };
 
   const formatPrize = (amount: number, currency: string) => {
-    if (!amount) return "No prize specified";
-    return `${currency || "$"}${amount.toLocaleString()}`;
+    try {
+      if (!amount || amount === 0) return "No prize specified";
+      if (typeof amount !== "number" || isNaN(amount)) {
+        console.warn("[WARN] formatPrize: Invalid amount:", amount);
+        return "Invalid prize amount";
+      }
+      return `${currency || "$"}${amount.toLocaleString()}`;
+    } catch (error) {
+      console.error(
+        "[ERROR] formatPrize error:",
+        error,
+        "amount:",
+        amount,
+        "currency:",
+        currency,
+      );
+      return "Prize error";
+    }
   };
 
   // Calculate statistics
@@ -133,60 +249,138 @@ export default function ClientDashboard({
 
   // Filter submissions based on selected filter
   const getFilteredSubmissions = () => {
-    const now = new Date();
+    try {
+      console.log("[DEBUG] getFilteredSubmissions - submissions:", submissions);
+      console.log(
+        "[DEBUG] getFilteredSubmissions - selectedFilter:",
+        selectedFilter,
+      );
 
-    switch (selectedFilter) {
-      case "draft":
-        return submissions.filter((s) => s.status === "draft");
-      case "pending":
-        return submissions.filter(
-          (s) => s.status === "submitted" || s.status === "under_review",
-        );
-      case "current":
-        return submissions.filter((s) => {
-          const startDate = new Date(s.start_date);
-          const endDate = new Date(s.end_date);
-          return (
-            (s.status === "approved" || s.status === "published") &&
-            startDate <= now &&
-            endDate >= now
+      if (!Array.isArray(submissions)) {
+        console.warn("[WARN] submissions is not an array:", submissions);
+        return [];
+      }
+
+      const now = new Date();
+
+      switch (selectedFilter) {
+        case "draft":
+          return submissions.filter((s) => s && s.status === "draft");
+        case "pending":
+          return submissions.filter(
+            (s) =>
+              s && (s.status === "submitted" || s.status === "under_review"),
           );
-        });
-      case "past":
-        return submissions.filter((s) => {
-          const endDate = new Date(s.end_date);
-          return endDate < now;
-        });
-      default:
-        return submissions;
+        case "current":
+          return submissions.filter((s) => {
+            if (!s || !s.start_date || !s.end_date) return false;
+            try {
+              const startDate = new Date(s.start_date);
+              const endDate = new Date(s.end_date);
+              if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()))
+                return false;
+              return (
+                (s.status === "approved" || s.status === "published") &&
+                startDate <= now &&
+                endDate >= now
+              );
+            } catch (error) {
+              console.error(
+                "[ERROR] Date parsing error in current filter:",
+                error,
+                s,
+              );
+              return false;
+            }
+          });
+        case "past":
+          return submissions.filter((s) => {
+            if (!s || !s.end_date) return false;
+            try {
+              const endDate = new Date(s.end_date);
+              if (isNaN(endDate.getTime())) return false;
+              return endDate < now;
+            } catch (error) {
+              console.error(
+                "[ERROR] Date parsing error in past filter:",
+                error,
+                s,
+              );
+              return false;
+            }
+          });
+        default:
+          return submissions;
+      }
+    } catch (error) {
+      console.error("[ERROR] getFilteredSubmissions error:", error);
+      return [];
     }
   };
 
   const filteredSubmissions = getFilteredSubmissions();
 
-  // Calculate filter counts
-  const filterCounts = {
-    all: submissions.length,
-    draft: submissions.filter((s) => s.status === "draft").length,
-    pending: submissions.filter(
-      (s) => s.status === "submitted" || s.status === "under_review",
-    ).length,
-    current: submissions.filter((s) => {
+  // Calculate filter counts with safety checks
+  const filterCounts = (() => {
+    try {
+      if (!Array.isArray(submissions)) {
+        console.warn(
+          "[WARN] submissions is not an array for filterCounts:",
+          submissions,
+        );
+        return { all: 0, draft: 0, pending: 0, current: 0, past: 0 };
+      }
+
       const now = new Date();
-      const startDate = new Date(s.start_date);
-      const endDate = new Date(s.end_date);
-      return (
-        (s.status === "approved" || s.status === "published") &&
-        startDate <= now &&
-        endDate >= now
-      );
-    }).length,
-    past: submissions.filter((s) => {
-      const now = new Date();
-      const endDate = new Date(s.end_date);
-      return endDate < now;
-    }).length,
-  };
+
+      return {
+        all: submissions.length,
+        draft: submissions.filter((s) => s && s.status === "draft").length,
+        pending: submissions.filter(
+          (s) => s && (s.status === "submitted" || s.status === "under_review"),
+        ).length,
+        current: submissions.filter((s) => {
+          if (!s || !s.start_date || !s.end_date) return false;
+          try {
+            const startDate = new Date(s.start_date);
+            const endDate = new Date(s.end_date);
+            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()))
+              return false;
+            return (
+              (s.status === "approved" || s.status === "published") &&
+              startDate <= now &&
+              endDate >= now
+            );
+          } catch (error) {
+            console.error(
+              "[ERROR] Date parsing error in current count:",
+              error,
+              s,
+            );
+            return false;
+          }
+        }).length,
+        past: submissions.filter((s) => {
+          if (!s || !s.end_date) return false;
+          try {
+            const endDate = new Date(s.end_date);
+            if (isNaN(endDate.getTime())) return false;
+            return endDate < now;
+          } catch (error) {
+            console.error(
+              "[ERROR] Date parsing error in past count:",
+              error,
+              s,
+            );
+            return false;
+          }
+        }).length,
+      };
+    } catch (error) {
+      console.error("[ERROR] filterCounts calculation error:", error);
+      return { all: 0, draft: 0, pending: 0, current: 0, past: 0 };
+    }
+  })();
 
   const handleNewSubmission = () => {
     setSelectedSubmission(null);

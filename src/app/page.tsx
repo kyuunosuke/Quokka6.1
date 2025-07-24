@@ -217,14 +217,59 @@ export default function Home() {
     async function fetchData() {
       try {
         const supabase = createClient();
+
+        // Test Supabase connection first
+        try {
+          console.log("[DEBUG] Testing Supabase connection on main page");
+          const testResult = await supabase
+            .from("competitions")
+            .select("count", { count: "exact", head: true });
+          console.log("[DEBUG] Main page connection test result:", testResult);
+
+          if (
+            testResult.error &&
+            testResult.error.message.includes("not configured")
+          ) {
+            console.error(
+              "[ERROR] Supabase client not properly configured on main page",
+            );
+            if (mounted) {
+              setError(new Error("Database connection not configured"));
+              setCompetitions([]);
+            }
+            return;
+          }
+        } catch (connectionError) {
+          console.error(
+            "[ERROR] Supabase connection test failed on main page:",
+            connectionError,
+          );
+          if (mounted) {
+            setError(connectionError);
+            setCompetitions([]);
+          }
+          return;
+        }
+
         const {
           data: { user },
+          error: authError,
         } = await supabase.auth.getUser();
+
+        if (authError) {
+          console.error("[ERROR] Auth error on main page:", authError);
+          if (authError.message.includes("not configured")) {
+            console.error(
+              "[ERROR] Authentication not configured properly on main page",
+            );
+          }
+        }
 
         if (mounted) {
           setUser(user);
         }
 
+        console.log("[DEBUG] Fetching competitions from database");
         // Fetch competitions from Supabase
         const result = await supabase
           .from("competitions")
@@ -244,36 +289,83 @@ export default function Home() {
           .eq("status", "active")
           .order("created_at", { ascending: false });
 
+        console.log("[DEBUG] Competitions query result:", result);
+
         if (result.error) {
-          console.error("Supabase error:", result.error);
+          console.error(
+            "[ERROR] Supabase competitions query error:",
+            result.error,
+          );
+
+          if (result.error.message.includes("not configured")) {
+            console.error(
+              "[ERROR] Database not configured for competitions query",
+            );
+          }
+
+          if (result.error.code === "PGRST116") {
+            console.error("[ERROR] Table 'competitions' does not exist");
+          }
+
           if (mounted) {
             setError(result.error);
+            setCompetitions([]);
           }
           return;
         }
+
         if (!result.data) {
-          console.warn("Supabase returned no data.");
+          console.warn("[WARN] Supabase returned no competition data.");
         }
+
+        const competitions = result.data || [];
+        console.log(
+          "[DEBUG] Successfully fetched competitions:",
+          competitions.length,
+          "items",
+        );
+
         if (mounted) {
-          setCompetitions(result.data || []);
+          setCompetitions(competitions);
         }
 
         // If user is authenticated, fetch their saved competitions
         if (user && mounted) {
+          console.log("[DEBUG] Fetching saved competitions for user:", user.id);
           const savedResult = await supabase
             .from("saved_competitions")
             .select("competition_id")
             .eq("user_id", user.id);
 
-          if (savedResult.data && mounted) {
+          console.log("[DEBUG] Saved competitions result:", savedResult);
+
+          if (savedResult.error) {
+            console.error(
+              "[ERROR] Error fetching saved competitions:",
+              savedResult.error,
+            );
+          } else if (savedResult.data && mounted) {
             const savedIds = new Set(
               savedResult.data.map((item) => item.competition_id),
             );
             setSavedCompetitions(savedIds);
+            console.log(
+              "[DEBUG] Set saved competitions:",
+              savedIds.size,
+              "items",
+            );
           }
         }
       } catch (error) {
-        console.error("Fetch error:", error);
+        console.error("[ERROR] Main page fetch error:", error);
+        console.error("[ERROR] Error details:", {
+          message: error?.message,
+          code: error?.code,
+          details: error?.details,
+          hint: error?.hint,
+          stack: error?.stack,
+        });
+
         if (mounted) {
           setError(error);
           setCompetitions([]); // Set empty array to prevent undefined issues
