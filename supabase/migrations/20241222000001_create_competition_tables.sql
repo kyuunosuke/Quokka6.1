@@ -193,32 +193,13 @@ CREATE TRIGGER update_participant_count_trigger
     AFTER INSERT OR UPDATE OR DELETE ON public.competition_submissions
     FOR EACH ROW EXECUTE FUNCTION update_competition_participant_count();
 
--- Create policy to allow read access for authenticated users
-CREATE POLICY "Allow read for authenticated users"
-ON public.competitions
-AS PERMISSIVE
-FOR SELECT
-TO authenticated
-USING (true);
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Allow read for authenticated users" ON public.competitions;
+DROP POLICY IF EXISTS "Allow public read for active competitions" ON public.competitions;
+DROP POLICY IF EXISTS "Allow read for competition_requirements_selected" ON public.competition_requirements_selected;
+DROP POLICY IF EXISTS "Allow read for requirement_options" ON public.requirement_options;
 
--- Create policy to allow public read access for active competitions
-CREATE POLICY "Allow public read for active competitions"
-ON public.competitions
-AS PERMISSIVE
-FOR SELECT
-TO public
-USING (status = 'active');
-
--- Create policies for other tables
-CREATE POLICY "Allow read for competition_requirements_selected"
-ON public.competition_requirements_selected
-AS PERMISSIVE
-FOR SELECT
-TO public
-USING (true);
-
--- Create policies for requirement_options table if it exists
--- Note: This table might not exist yet, so we'll create it if needed
+-- Create requirement_options table if it doesn't exist
 CREATE TABLE IF NOT EXISTS public.requirement_options (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name text NOT NULL,
@@ -227,13 +208,6 @@ CREATE TABLE IF NOT EXISTS public.requirement_options (
     is_active boolean DEFAULT true,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
-
-CREATE POLICY "Allow read for requirement_options"
-ON public.requirement_options
-AS PERMISSIVE
-FOR SELECT
-TO public
-USING (true);
 
 -- Create competition_requirements_selected table if it doesn't exist
 CREATE TABLE IF NOT EXISTS public.competition_requirements_selected (
@@ -244,6 +218,102 @@ CREATE TABLE IF NOT EXISTS public.competition_requirements_selected (
     UNIQUE(competition_id, requirement_option_id)
 );
 
+-- Enable RLS on all tables
+ALTER TABLE public.competitions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.competition_requirements_selected ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.requirement_options ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.saved_competitions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.competition_submissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.competition_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.competition_eligibility ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.competition_requirements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.competition_rules ENABLE ROW LEVEL SECURITY;
+
+-- Create comprehensive policies for competitions table
+CREATE POLICY "competitions_public_read" ON public.competitions
+FOR SELECT TO public
+USING (true);
+
+CREATE POLICY "competitions_anon_read" ON public.competitions
+FOR SELECT TO anon
+USING (true);
+
+CREATE POLICY "competitions_authenticated_read" ON public.competitions
+FOR SELECT TO authenticated
+USING (true);
+
+-- Create policies for competition_requirements_selected
+CREATE POLICY "competition_requirements_selected_public_read" ON public.competition_requirements_selected
+FOR SELECT TO public
+USING (true);
+
+CREATE POLICY "competition_requirements_selected_anon_read" ON public.competition_requirements_selected
+FOR SELECT TO anon
+USING (true);
+
+CREATE POLICY "competition_requirements_selected_authenticated_read" ON public.competition_requirements_selected
+FOR SELECT TO authenticated
+USING (true);
+
+-- Create policies for requirement_options
+CREATE POLICY "requirement_options_public_read" ON public.requirement_options
+FOR SELECT TO public
+USING (true);
+
+CREATE POLICY "requirement_options_anon_read" ON public.requirement_options
+FOR SELECT TO anon
+USING (true);
+
+CREATE POLICY "requirement_options_authenticated_read" ON public.requirement_options
+FOR SELECT TO authenticated
+USING (true);
+
+-- Create policies for saved_competitions (user-specific)
+CREATE POLICY "saved_competitions_user_read" ON public.saved_competitions
+FOR SELECT TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE POLICY "saved_competitions_user_insert" ON public.saved_competitions
+FOR INSERT TO authenticated
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "saved_competitions_user_delete" ON public.saved_competitions
+FOR DELETE TO authenticated
+USING (auth.uid() = user_id);
+
+-- Create policies for other tables
+CREATE POLICY "competition_categories_public_read" ON public.competition_categories
+FOR SELECT TO public
+USING (true);
+
+CREATE POLICY "competition_eligibility_public_read" ON public.competition_eligibility
+FOR SELECT TO public
+USING (true);
+
+CREATE POLICY "competition_requirements_public_read" ON public.competition_requirements
+FOR SELECT TO public
+USING (true);
+
+CREATE POLICY "competition_rules_public_read" ON public.competition_rules
+FOR SELECT TO public
+USING (true);
+
+CREATE POLICY "competition_submissions_user_read" ON public.competition_submissions
+FOR SELECT TO authenticated
+USING (auth.uid() = user_id);
+
 -- Enable realtime for new tables
 ALTER PUBLICATION supabase_realtime ADD TABLE public.requirement_options;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.competition_requirements_selected;
+
+-- Insert some sample requirement options if they don't exist
+INSERT INTO public.requirement_options (name, description, category) VALUES
+('Original Work', 'Submission must be original work created by the participant.', 'content'),
+('High Resolution', 'Images must be at least 1920x1080 pixels in resolution.', 'technical'),
+('File Format', 'Accepted formats: JPG, PNG, PDF, or MP4.', 'technical'),
+('Age Requirement', 'Participants must be 18 years or older.', 'eligibility'),
+('Geographic Restriction', 'Open to residents of specified countries only.', 'eligibility'),
+('Team Participation', 'Teams of up to 4 members are allowed.', 'participation'),
+('Single Entry', 'Only one entry per participant is allowed.', 'participation'),
+('Copyright License', 'By submitting, you grant usage rights to the organizer.', 'legal')
+ON CONFLICT (name) DO NOTHING;
