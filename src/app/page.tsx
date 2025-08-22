@@ -216,67 +216,139 @@ export default function Home() {
 
     async function fetchData() {
       try {
+        console.log("Starting data fetch...");
         const supabase = createClient();
+
+        // Test basic connection first
+        console.log("Testing Supabase connection...");
+        const connectionTest = await supabase
+          .from("competitions")
+          .select("count", { count: "exact", head: true });
+        console.log("Connection test result:", connectionTest);
+
+        if (connectionTest.error) {
+          console.error("Connection test failed:", connectionTest.error);
+          if (mounted) {
+            setError(connectionTest.error);
+          }
+          return;
+        }
+
+        // Get user first
+        console.log("Getting user...");
         const {
           data: { user },
+          error: userError,
         } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error("User fetch error:", userError);
+        }
 
         if (mounted) {
           setUser(user);
         }
 
-        // Fetch competitions from Supabase
-        const result = await supabase
+        // Fetch competitions with simpler query first
+        console.log("Fetching competitions...");
+        const competitionsResult = await supabase
           .from("competitions")
-          .select(
-            `
-            *,
-            competition_requirements_selected(
-              requirement_option_id,
-              requirement_options(
-                id,
-                name,
-                description
-              )
-            )
-          `,
-          )
+          .select("*")
           .eq("status", "active")
           .order("created_at", { ascending: false });
 
-        if (result.error) {
-          console.error("Supabase error:", result.error);
+        console.log("Competitions query result:", competitionsResult);
+
+        if (competitionsResult.error) {
+          console.error("Competitions fetch error:", competitionsResult.error);
           if (mounted) {
-            setError(result.error);
+            setError(competitionsResult.error);
           }
           return;
         }
-        if (!result.data) {
-          console.warn("Supabase returned no data.");
+
+        if (!competitionsResult.data) {
+          console.warn("No competitions data returned");
+          if (mounted) {
+            setCompetitions([]);
+          }
+          return;
         }
+
+        console.log("Found competitions:", competitionsResult.data.length);
+
+        // Fetch requirements separately for each competition
+        const competitionsWithRequirements = await Promise.all(
+          competitionsResult.data.map(async (competition) => {
+            try {
+              const requirementsResult = await supabase
+                .from("competition_requirements_selected")
+                .select(
+                  `
+                  requirement_option_id,
+                  requirement_options(
+                    id,
+                    name,
+                    description
+                  )
+                `,
+                )
+                .eq("competition_id", competition.id);
+
+              return {
+                ...competition,
+                competition_requirements_selected:
+                  requirementsResult.data || [],
+              };
+            } catch (reqError) {
+              console.warn(
+                "Error fetching requirements for competition",
+                competition.id,
+                ":",
+                reqError,
+              );
+              return {
+                ...competition,
+                competition_requirements_selected: [],
+              };
+            }
+          }),
+        );
+
         if (mounted) {
-          setCompetitions(result.data || []);
+          setCompetitions(competitionsWithRequirements);
+          console.log(
+            "Set competitions data:",
+            competitionsWithRequirements.length,
+          );
         }
 
         // If user is authenticated, fetch their saved competitions
         if (user && mounted) {
+          console.log("Fetching saved competitions for user:", user.id);
           const savedResult = await supabase
             .from("saved_competitions")
             .select("competition_id")
             .eq("user_id", user.id);
 
-          if (savedResult.data && mounted) {
+          if (savedResult.error) {
+            console.warn(
+              "Error fetching saved competitions:",
+              savedResult.error,
+            );
+          } else if (savedResult.data && mounted) {
             const savedIds = new Set(
               savedResult.data.map((item) => item.competition_id),
             );
             setSavedCompetitions(savedIds);
+            console.log("Set saved competitions:", savedIds.size);
           }
         }
       } catch (error) {
-        console.error("Fetch error:", error);
+        console.error("Unexpected error in fetchData:", error);
         if (mounted) {
           setError(error);
-          setCompetitions([]); // Set empty array to prevent undefined issues
+          setCompetitions([]);
         }
       }
     }
@@ -286,15 +358,7 @@ export default function Home() {
     return () => {
       mounted = false;
     };
-  }, []); // Empty dependency array
-
-  if (error) {
-    console.error("Error fetching competitions:", error);
-  }
-
-  // Debug logging
-  console.log("Competitions data:", competitions);
-  console.log("Error:", error);
+  }, []);
 
   // Check for invalid competition data early
   if (!Array.isArray(competitions)) {
