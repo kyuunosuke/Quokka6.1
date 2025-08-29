@@ -40,6 +40,12 @@ export default function AdminNavbar() {
               Main Site
             </Button>
           </Link>
+          <Link href="/storyboards">
+            <Button variant="outline" size="sm">
+              <Shield className="h-4 w-4 mr-2" />
+              Storyboards
+            </Button>
+          </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
