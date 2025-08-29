@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Trophy,
   User,
@@ -26,8 +27,10 @@ import {
   Gamepad2,
   Loader2,
   Star,
+  Eye,
 } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard-navbar";
+import Link from "next/link";
 import {
   calculateProfileLevel,
   getLevelBadgeColor,
@@ -331,6 +334,18 @@ function MemberTabs({
             <Settings className="h-4 w-4" />
             Settings
           </TabsTrigger>
+          <div className="mt-4 pt-4 border-t">
+            <Link href="/storyboards" className="w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                View Storyboards
+              </Button>
+            </Link>
+          </div>
         </TabsList>
 
         <div className="flex-1">
