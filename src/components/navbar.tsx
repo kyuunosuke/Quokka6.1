@@ -36,17 +36,6 @@ export default function Navbar() {
           />
         </Link>
 
-        {/* Middle section with ChatGPT image */}
-        <div className="flex items-center h-[60px] w-[60px]">
-          <Image
-            src="/images/ChatGPT Image Jul 21, 2025, 02_59_05 PM.png"
-            alt="ChatGPT Image"
-            width={60}
-            height={60}
-            className="object-contain font-[400] text-[16px] -tracking-normal"
-          />
-        </div>
-
         <div className="flex gap-4 items-center">
           {user ? (
             <>

@@ -7,7 +7,7 @@ export function TempoInit() {
     const init = async () => {
       if (process.env.NEXT_PUBLIC_TEMPO) {
         const { TempoDevtools } = await import("tempo-devtools");
-        TempoDevtools.init();
+        /* TempoDevtools.init() [deprecated] */;
       }
     };
 
