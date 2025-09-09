@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { UserCircle, Home } from "lucide-react";
+import { UserCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function DashboardNavbar() {
@@ -25,12 +25,6 @@ export default function DashboardNavbar() {
           </Link>
         </div>
         <div className="flex gap-4 items-center">
-          <Link href="/storyboards">
-            <Button variant="outline" size="sm">
-              <Home className="h-4 w-4 mr-2" />
-              Storyboards
-            </Button>
-          </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">

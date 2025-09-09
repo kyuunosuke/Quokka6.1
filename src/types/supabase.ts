@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -35,6 +35,138 @@ export type Database = {
           id?: string
           notes?: string | null
           setup_date?: string | null
+        }
+        Relationships: []
+      }
+      client_submissions: {
+        Row: {
+          admin_notes: string | null
+          approved_at: string | null
+          banner_url: string | null
+          category: string
+          client_id: string
+          company_description: string | null
+          company_name: string | null
+          created_at: string | null
+          description: string | null
+          detailed_description: string | null
+          difficulty_level: string | null
+          end_date: string
+          entry_fee: number | null
+          id: string
+          is_team_competition: boolean | null
+          judging_end_date: string | null
+          judging_start_date: string | null
+          max_participants: number | null
+          max_team_size: number | null
+          min_team_size: number | null
+          organizer_email: string
+          organizer_name: string
+          organizer_website: string | null
+          prize_amount: number | null
+          prize_currency: string | null
+          prize_description: string | null
+          published_at: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          rules: string | null
+          start_date: string
+          status: string | null
+          subcategory: string | null
+          submission_deadline: string
+          submitted_at: string | null
+          tags: string[] | null
+          terms_conditions_url: string | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string | null
+          winner_announcement_date: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          approved_at?: string | null
+          banner_url?: string | null
+          category: string
+          client_id: string
+          company_description?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          detailed_description?: string | null
+          difficulty_level?: string | null
+          end_date: string
+          entry_fee?: number | null
+          id?: string
+          is_team_competition?: boolean | null
+          judging_end_date?: string | null
+          judging_start_date?: string | null
+          max_participants?: number | null
+          max_team_size?: number | null
+          min_team_size?: number | null
+          organizer_email: string
+          organizer_name: string
+          organizer_website?: string | null
+          prize_amount?: number | null
+          prize_currency?: string | null
+          prize_description?: string | null
+          published_at?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          rules?: string | null
+          start_date: string
+          status?: string | null
+          subcategory?: string | null
+          submission_deadline: string
+          submitted_at?: string | null
+          tags?: string[] | null
+          terms_conditions_url?: string | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string | null
+          winner_announcement_date?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          approved_at?: string | null
+          banner_url?: string | null
+          category?: string
+          client_id?: string
+          company_description?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          detailed_description?: string | null
+          difficulty_level?: string | null
+          end_date?: string
+          entry_fee?: number | null
+          id?: string
+          is_team_competition?: boolean | null
+          judging_end_date?: string | null
+          judging_start_date?: string | null
+          max_participants?: number | null
+          max_team_size?: number | null
+          min_team_size?: number | null
+          organizer_email?: string
+          organizer_name?: string
+          organizer_website?: string | null
+          prize_amount?: number | null
+          prize_currency?: string | null
+          prize_description?: string | null
+          published_at?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          rules?: string | null
+          start_date?: string
+          status?: string | null
+          subcategory?: string | null
+          submission_deadline?: string
+          submitted_at?: string | null
+          tags?: string[] | null
+          terms_conditions_url?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string | null
+          winner_announcement_date?: string | null
         }
         Relationships: []
       }
@@ -290,6 +422,7 @@ export type Database = {
           description: string | null
           detailed_description: string | null
           difficulty_level: string
+          draw_date: string | null
           end_date: string
           entry_fee: number | null
           featured: boolean | null
@@ -304,9 +437,12 @@ export type Database = {
           organizer_id: string | null
           organizer_name: string | null
           organizer_website: string | null
+          participating_requirement: string | null
+          permits: string | null
           prize_amount: number | null
           prize_currency: string | null
           prize_description: string | null
+          region: string | null
           rules: string | null
           start_date: string
           status: string
@@ -316,6 +452,7 @@ export type Database = {
           terms_conditions_url: string | null
           thumbnail_url: string | null
           title: string
+          total_prize: string | null
           updated_at: string | null
           winner_announcement_date: string | null
         }
@@ -327,6 +464,7 @@ export type Database = {
           description?: string | null
           detailed_description?: string | null
           difficulty_level?: string
+          draw_date?: string | null
           end_date: string
           entry_fee?: number | null
           featured?: boolean | null
@@ -341,9 +479,12 @@ export type Database = {
           organizer_id?: string | null
           organizer_name?: string | null
           organizer_website?: string | null
+          participating_requirement?: string | null
+          permits?: string | null
           prize_amount?: number | null
           prize_currency?: string | null
           prize_description?: string | null
+          region?: string | null
           rules?: string | null
           start_date: string
           status?: string
@@ -353,6 +494,7 @@ export type Database = {
           terms_conditions_url?: string | null
           thumbnail_url?: string | null
           title: string
+          total_prize?: string | null
           updated_at?: string | null
           winner_announcement_date?: string | null
         }
@@ -364,6 +506,7 @@ export type Database = {
           description?: string | null
           detailed_description?: string | null
           difficulty_level?: string
+          draw_date?: string | null
           end_date?: string
           entry_fee?: number | null
           featured?: boolean | null
@@ -378,9 +521,12 @@ export type Database = {
           organizer_id?: string | null
           organizer_name?: string | null
           organizer_website?: string | null
+          participating_requirement?: string | null
+          permits?: string | null
           prize_amount?: number | null
           prize_currency?: string | null
           prize_description?: string | null
+          region?: string | null
           rules?: string | null
           start_date?: string
           status?: string
@@ -390,6 +536,7 @@ export type Database = {
           terms_conditions_url?: string | null
           thumbnail_url?: string | null
           title?: string
+          total_prize?: string | null
           updated_at?: string | null
           winner_announcement_date?: string | null
         }
@@ -618,14 +765,18 @@ export type Database = {
       create_admin_user: {
         Args: {
           admin_email: string
-          admin_password: string
           admin_name?: string
+          admin_password: string
         }
         Returns: string
       }
       is_admin_user: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      update_competition_status_on_end_date: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       validate_admin_credentials: {
         Args: { check_email: string; check_password: string }

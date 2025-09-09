@@ -25,11 +25,12 @@ import {
   createCompetition,
   updateCompetition,
   createRequirementOption,
+  importCompetitionFromUrl,
 } from "../actions";
 import { Tables } from "@/types/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import { createClient } from "../../../../supabase/client";
-import { Plus } from "lucide-react";
+import { Plus, Download, AlertCircle } from "lucide-react";
 
 type Competition = Tables<"competitions">;
 type RequirementOption = Tables<"requirement_options">;
@@ -65,6 +66,13 @@ export default function CompetitionForm({
     useState("");
   const [addingRequirement, setAddingRequirement] = useState(false);
   const [isFeatured, setIsFeatured] = useState(competition?.featured || false);
+  const [tags, setTags] = useState<string[]>(competition?.tags || []);
+  const [tagInput, setTagInput] = useState("");
+  const [importUrl, setImportUrl] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importedData, setImportedData] = useState<any>(null);
+  const [importIssues, setImportIssues] = useState<string[]>([]);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   // Initialize with a function to avoid calling getCurrentDateWithMidnight during render
   const [endDate, setEndDate] = useState(() => {
@@ -138,6 +146,105 @@ export default function CompetitionForm({
     }
   };
 
+  const handleAddTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter((tag) => tag !== tagToRemove));
+  };
+
+  const handleImportUrl = async () => {
+    if (!importUrl.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("url", importUrl.trim());
+
+      const result = await importCompetitionFromUrl(formData);
+
+      if (result.success && result.data) {
+        setImportedData(result.data);
+        setImportIssues(result.issues || []);
+        setShowImportDialog(true);
+
+        toast({
+          title: "Success",
+          description: "Competition data imported successfully",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to import competition data",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error importing URL:", error);
+      toast({
+        title: "Error",
+        description: "Failed to import competition data",
+        variant: "destructive",
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const applyImportedData = () => {
+    if (!importedData) return;
+
+    // Apply imported data to form fields
+    const form = document.querySelector("form") as HTMLFormElement;
+    if (!form) return;
+
+    Object.entries(importedData).forEach(([key, value]) => {
+      const input = form.querySelector(`[name="${key}"]`) as
+        | HTMLInputElement
+        | HTMLTextAreaElement
+        | HTMLSelectElement;
+      if (input && value) {
+        input.value = String(value);
+        // Trigger change event for React to pick up the change
+        const event = new Event("input", { bubbles: true });
+        input.dispatchEvent(event);
+      }
+    });
+
+    // Handle special cases
+    if (importedData.featured !== undefined) {
+      setIsFeatured(importedData.featured);
+    }
+    if (importedData.tags && Array.isArray(importedData.tags)) {
+      setTags(importedData.tags);
+    }
+    if (importedData.end_date && !isSubmissionDeadlineModified) {
+      setEndDate(importedData.end_date);
+      setSubmissionDeadline(
+        importedData.submission_deadline || importedData.end_date,
+      );
+    }
+
+    setShowImportDialog(false);
+    setImportUrl("");
+
+    toast({
+      title: "Applied",
+      description: "Imported data has been applied to the form",
+    });
+  };
+
   const handleAddRequirement = async () => {
     if (!newRequirementName.trim()) {
       toast({
@@ -203,6 +310,11 @@ export default function CompetitionForm({
         formData.append("requirements", reqId);
       });
 
+      // Add tags to form data
+      tags.forEach((tag) => {
+        formData.append("tags", tag);
+      });
+
       // Handle featured checkbox explicitly
       console.log("🔍 DEBUG FORM - isFeatured state:", isFeatured);
       console.log(
@@ -260,11 +372,76 @@ export default function CompetitionForm({
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Import URL Section */}
+        {!isEditing && (
+          <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+            <h3 className="text-lg font-semibold mb-4">Import from URL</h3>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter competition URL to import data..."
+                value={importUrl}
+                onChange={(e) => setImportUrl(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                onClick={handleImportUrl}
+                disabled={importing || !importUrl.trim()}
+                variant="outline"
+              >
+                {importing ? (
+                  "Importing..."
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Import
+                  </>
+                )}
+              </Button>
+            </div>
+            <p className="text-sm text-gray-600 mt-2">
+              Paste a competition URL to automatically populate form fields
+            </p>
+          </div>
+        )}
+
         <form action={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Basic Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Basic Information</h3>
+
+              {isEditing && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="competition_id">Competition ID</Label>
+                    <Input
+                      id="competition_id"
+                      name="competition_id"
+                      value={competition?.id || ""}
+                      disabled
+                      className="bg-gray-100 text-gray-500 cursor-not-allowed"
+                      placeholder="Auto-generated"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="created_date">Created Date</Label>
+                    <Input
+                      id="created_date"
+                      name="created_date"
+                      value={
+                        competition?.created_at
+                          ? new Date(competition.created_at).toLocaleString()
+                          : ""
+                      }
+                      disabled
+                      className="bg-gray-100 text-gray-500 cursor-not-allowed"
+                      placeholder="Auto-generated"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="title">Title *</Label>
@@ -278,7 +455,7 @@ export default function CompetitionForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Short Description</Label>
+                <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
                   name="description"
@@ -289,126 +466,70 @@ export default function CompetitionForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="detailed_description">Entry Criteria</Label>
-                <Textarea
-                  id="detailed_description"
-                  name="detailed_description"
-                  defaultValue={competition?.detailed_description || ""}
-                  placeholder="Additional entry criteria and information"
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Requirements</Label>
-                  <Dialog
-                    open={showAddRequirement}
-                    onOpenChange={setShowAddRequirement}
-                  >
-                    <DialogTrigger asChild>
-                      <Button type="button" variant="outline" size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add New
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Add New Requirement Option</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="new-req-name">
-                            Requirement Name *
-                          </Label>
-                          <Input
-                            id="new-req-name"
-                            value={newRequirementName}
-                            onChange={(e) =>
-                              setNewRequirementName(e.target.value)
-                            }
-                            placeholder="Enter requirement name"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="new-req-desc">Description</Label>
-                          <Textarea
-                            id="new-req-desc"
-                            value={newRequirementDescription}
-                            onChange={(e) =>
-                              setNewRequirementDescription(e.target.value)
-                            }
-                            placeholder="Optional description"
-                            rows={3}
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            onClick={handleAddRequirement}
-                            disabled={addingRequirement}
-                          >
-                            {addingRequirement
-                              ? "Adding..."
-                              : "Add Requirement"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              setShowAddRequirement(false);
-                              setNewRequirementName("");
-                              setNewRequirementDescription("");
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto border rounded-md p-4">
-                  {requirementOptions.map((option) => (
-                    <div key={option.id} className="flex items-start space-x-3">
-                      <Checkbox
-                        id={`req-${option.id}`}
-                        checked={selectedRequirements.includes(option.id)}
-                        onCheckedChange={(checked) =>
-                          handleRequirementToggle(option.id, checked as boolean)
-                        }
-                      />
-                      <div className="flex-1">
-                        <Label
-                          htmlFor={`req-${option.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {option.name}
-                        </Label>
-                        {option.description && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {option.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {requirementOptions.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No requirement options available. Add some using the
-                      &quot;Add New&quot; button.
-                    </p>
-                  )}
+                <Label>Entry Criteria</Label>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="criteria_18_plus"
+                      name="entry_criteria"
+                      value="18+"
+                      defaultChecked={
+                        competition?.detailed_description?.includes("18+") ||
+                        false
+                      }
+                    />
+                    <Label htmlFor="criteria_18_plus">18+</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="criteria_au_residents"
+                      name="entry_criteria"
+                      value="AU Residents"
+                      defaultChecked={
+                        competition?.detailed_description?.includes(
+                          "AU Residents",
+                        ) || false
+                      }
+                    />
+                    <Label htmlFor="criteria_au_residents">AU Residents</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="criteria_members_only"
+                      name="entry_criteria"
+                      value="Members only"
+                      defaultChecked={
+                        competition?.detailed_description?.includes(
+                          "Members only",
+                        ) || false
+                      }
+                    />
+                    <Label htmlFor="criteria_members_only">Members only</Label>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="rules">Rules</Label>
+                <Label htmlFor="participating_requirement">
+                  Participating requirement
+                </Label>
+                <Input
+                  id="participating_requirement"
+                  name="participating_requirement"
+                  defaultValue={competition?.rules || ""}
+                  placeholder="Enter participating requirements"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rules">
+                  Competition Rules and Winning Methods
+                </Label>
                 <Textarea
                   id="rules"
                   name="rules"
                   defaultValue={competition?.rules || ""}
-                  placeholder="Competition rules and guidelines"
+                  placeholder="Competition rules, guidelines, and winning methods"
                   rows={5}
                 />
               </div>
@@ -428,7 +549,9 @@ export default function CompetitionForm({
                     <SelectItem value="Barrier (Medium)">
                       Barrier (Medium)
                     </SelectItem>
-                    <SelectItem value="Exclusive">Exclusive</SelectItem>
+                    <SelectItem value="Purchase Required">
+                      Purchase Required
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -531,71 +654,64 @@ export default function CompetitionForm({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="prize_amount">Prize Amount</Label>
-                  <Input
-                    id="prize_amount"
-                    name="prize_amount"
-                    type="number"
-                    step="0.01"
-                    defaultValue={competition?.prize_amount || ""}
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="prize_currency">Currency</Label>
-                  <Select
-                    name="prize_currency"
-                    defaultValue={competition?.prize_currency || "AUD"}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="GBP">GBP</SelectItem>
-                      <SelectItem value="CAD">CAD</SelectItem>
-                      <SelectItem value="AUD">AUD</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="prize_description">Prize Description</Label>
                 <Textarea
                   id="prize_description"
                   name="prize_description"
                   defaultValue={competition?.prize_description || ""}
-                  placeholder="Description of prizes and rewards"
+                  placeholder="Describe the prize details"
                   rows={3}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="max_participants">Max Participants</Label>
-                  <Input
-                    id="max_participants"
-                    name="max_participants"
-                    type="number"
-                    defaultValue={competition?.max_participants || ""}
-                    placeholder="Unlimited if empty"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="entry_fee">Entry Fee</Label>
-                  <Input
-                    id="entry_fee"
-                    name="entry_fee"
-                    type="number"
-                    step="0.01"
-                    defaultValue={competition?.entry_fee || "0"}
-                    placeholder="0.00"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="total_prize">Total Prize</Label>
+                <Textarea
+                  id="total_prize"
+                  name="total_prize"
+                  defaultValue={competition?.prize_description || ""}
+                  placeholder="Total prize details and description"
+                  rows={3}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="draw_date">Draw Date</Label>
+                <Input
+                  id="draw_date"
+                  name="draw_date"
+                  type="datetime-local"
+                  className="w-full min-w-0 pr-12"
+                  defaultValue={
+                    competition?.draw_date
+                      ? new Date(competition.draw_date)
+                          .toISOString()
+                          .slice(0, 16)
+                      : ""
+                  }
+                  placeholder="Select draw date"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="permits">Permits</Label>
+                <Input
+                  id="permits"
+                  name="permits"
+                  defaultValue={competition?.permits || ""}
+                  placeholder="Required permits or licenses"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="region">Region</Label>
+                <Input
+                  id="region"
+                  name="region"
+                  defaultValue={competition?.region || ""}
+                  placeholder="Geographic region or location"
+                />
               </div>
             </div>
           </div>
@@ -661,13 +777,13 @@ export default function CompetitionForm({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="banner_url">Banner URL</Label>
+                <Label htmlFor="banner_url">Link URL</Label>
                 <Input
                   id="banner_url"
                   name="banner_url"
                   type="url"
                   defaultValue={competition?.banner_url || ""}
-                  placeholder="https://example.com/banner.jpg"
+                  placeholder="https://example.com/link"
                 />
               </div>
             </div>
@@ -721,6 +837,57 @@ export default function CompetitionForm({
             </Button>
           </div>
         </form>
+
+        {/* Import Data Dialog */}
+        <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Import Competition Data</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 flex-1 overflow-y-auto">
+              <div>
+                <h4 className="font-semibold mb-2">Imported Data Preview:</h4>
+                <div className="bg-gray-50 p-3 rounded max-h-60 overflow-y-auto">
+                  <pre className="text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere">
+                    {importedData
+                      ? JSON.stringify(importedData, null, 2)
+                      : "No data"}
+                  </pre>
+                </div>
+              </div>
+
+              {importIssues.length > 0 && (
+                <div className="border-l-4 border-yellow-400 bg-yellow-50 p-4">
+                  <div className="flex items-start">
+                    <AlertCircle className="h-5 w-5 text-yellow-400 mr-2 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-yellow-800">
+                        Import Issues:
+                      </h4>
+                      <ul className="mt-2 text-sm text-yellow-700 list-disc list-inside">
+                        {importIssues.map((issue, index) => (
+                          <li key={index}>{issue}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 justify-end pt-4 border-t bg-white">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowImportDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="button" onClick={applyImportedData}>
+                Apply to Form
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

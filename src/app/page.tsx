@@ -234,15 +234,23 @@ export default function Home() {
           return;
         }
 
-        // Get user first
+        // Get user first - handle auth session gracefully
         console.log("Getting user...");
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+        let user = null;
+        try {
+          const {
+            data: { user: authUser },
+            error: userError,
+          } = await supabase.auth.getUser();
 
-        if (userError) {
-          console.error("User fetch error:", userError);
+          if (userError && userError.message !== "Auth session missing!") {
+            console.error("User fetch error:", userError);
+          } else {
+            user = authUser;
+          }
+        } catch (authError) {
+          // Silently handle auth errors for public pages
+          console.log("No active session - continuing as guest");
         }
 
         if (mounted) {
