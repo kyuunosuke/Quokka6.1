@@ -1,0 +1,21 @@
+# Ignore Supabase functions directory (these are deployed separately to Supabase)
+supabase/functions/
+
+# Ignore Supabase config and migrations (not needed for Vercel deployment)
+supabase/config.toml
+supabase/migrations/
+
+# Ignore other Supabase-specific files
+supabase/client.ts
+supabase/server.ts
+supabase/middleware.ts
+
+# Ignore development files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Ignore temp files
+*.log
+.DS_Store
