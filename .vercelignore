@@ -5,8 +5,7 @@ supabase/functions/
 supabase/config.toml
 supabase/migrations/
 
-# Ignore other Supabase-specific files
-supabase/client.ts
+# Ignore Supabase server-side files
 supabase/server.ts
 supabase/middleware.ts
 
