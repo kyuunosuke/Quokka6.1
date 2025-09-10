@@ -24,7 +24,7 @@ const memberSignInAction = async (formData: FormData) => {
 
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
-  const { createClient } = await import("../../../../supabase/server");
+  const { createClient } = await import("@/lib/supabase-server");
   const { encodedRedirect } = await import("@/utils/utils");
   const { redirect } = await import("next/navigation");
 

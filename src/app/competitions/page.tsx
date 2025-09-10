@@ -20,7 +20,7 @@ import {
   Clock,
   Star,
 } from "lucide-react";
-import { createClient } from "../../../supabase/server";
+import { createClient } from "@/lib/supabase-server";
 import Link from "next/link";
 import { Tables } from "@/types/supabase";
 
