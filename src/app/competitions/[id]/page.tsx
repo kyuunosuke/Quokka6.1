@@ -360,11 +360,11 @@ export default async function CompetitionPage({
                     </div>
                   )}
 
-                  {competition.game_type && (
+                  {competition.type_of_game && (
                     <div className="flex items-center gap-3">
                       <Trophy className="h-5 w-5 text-yellow-600" />
                       <div>
-                        <p className="font-semibold">{competition.game_type}</p>
+                        <p className="font-semibold">{competition.type_of_game}</p>
                         <p className="text-sm text-muted-foreground">
                           Game Type
                         </p>
