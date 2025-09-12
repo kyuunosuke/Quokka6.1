@@ -567,10 +567,10 @@ export default function CompetitionForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="difficulty_level">Type of Game *</Label>
+                <Label htmlFor="type_of_game">Type of Game *</Label>
                 <Select
-                  name="difficulty_level"
-                  defaultValue={competition?.difficulty_level || ""}
+                  name="type_of_game"
+                  defaultValue={competition?.type_of_game || ""}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select game type" />
@@ -701,6 +701,16 @@ export default function CompetitionForm({
                   name="permits"
                   defaultValue={competition?.permits || ""}
                   placeholder="Required permits or licenses"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="permit_number">Permit Number</Label>
+                <Input
+                  id="permit_number"
+                  name="permit_number"
+                  defaultValue={competition?.permit_number || ""}
+                  placeholder="Permit number (if applicable)"
                 />
               </div>
 
