@@ -42,70 +42,45 @@ export async function createCompetition(
     };
   }
 
-  // Debug: Log the featured field value
-  const featuredValue = formData.get("featured");
-  console.log(
-    "🔍 DEBUG - Featured field value:",
-    featuredValue,
-    "Type:",
-    typeof featuredValue,
-  );
-  console.log("🔍 DEBUG - Featured boolean result:", featuredValue === "true");
+  // Helper function to handle date fields with required fallback
+  const formatDate = (dateString: string | null, fallback?: string): string => {
+    if (!dateString || dateString.trim() === "") {
+      return fallback || new Date().toISOString();
+    }
+    return dateString;
+  };
 
-  // Handle entry criteria checkboxes
-  const entryCriteria = formData.getAll("entry_criteria") as string[];
-  const entryCriteriaText =
-    entryCriteria.length > 0 ? entryCriteria.join(", ") : null;
+  // Helper function to handle numeric fields
+  const parseNumber = (value: string | null): number | null => {
+    if (!value || value.trim() === "") return null;
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? null : parsed;
+  };
 
-  // Handle tags array
-  const tags = formData.getAll("tags") as string[];
-  const tagsArray = tags.length > 0 ? tags : null;
-
+  // Map form data to actual database columns with proper null handling
   const competitionData = {
     title: formData.get("title") as string,
     description: formData.get("description") as string,
-    detailed_description: entryCriteriaText,
-    participating_requirement: formData.get("participating_requirement") as string,
-    rules: formData.get("rules") as string,
+    detailed_description: formData.get("detailed_description") as string,
     category: formData.get("category") as string,
-    subcategory: formData.get("subcategory") as string,
-    difficulty_level: formData.get("difficulty_level") as string,
+    type_of_game: formData.get("type_of_game") as string,
+    start_date: formatDate(formData.get("start_date") as string),
+    end_date: formatDate(formData.get("end_date") as string),
+    submission_deadline: formatDate(formData.get("draw_date") as string), // Always provide a value
     prize_description: formData.get("prize_description") as string,
-    total_prize: formData.get("total_prize") as string,
-    start_date: formData.get("start_date") as string,
-    end_date: formData.get("end_date") as string,
-    submission_deadline: formData.get("submission_deadline") as string,
-
-    is_team_competition: formData.get("is_team_competition") === "true",
-    max_team_size: parseInt(formData.get("max_team_size") as string) || null,
-    min_team_size: parseInt(formData.get("min_team_size") as string) || 1,
-    organizer_name: formData.get("organizer_name") as string,
-    organizer_email: formData.get("organizer_email") as string,
-    organizer_website: formData.get("organizer_website") as string,
-    terms_conditions_url: formData.get("terms_conditions_url") as string,
+    prize_amount: parseNumber(formData.get("total_prize") as string),
+    prize_currency: "AUD",
     thumbnail_url: formData.get("thumbnail_url") as string,
-    banner_url: formData.get("banner_url") as string,
-    status: formData.get("status") as string,
-    featured: featuredValue === "true",
-    updated_at: new Date().toISOString(),
-    draw_date: formData.get("draw_date") && formData.get("draw_date") !== ""
-      ? new Date(formData.get("draw_date") as string).toISOString()
-      : null,
-    permits: (formData.get("permits") as string) || null,
-    region: (formData.get("region") as string) || null,
-    tags: tagsArray,
+    organizer_name: formData.get("organiser_name") as string,
+    organizer_website: formData.get("organiser_website") as string,
+    organizer_email: formData.get("organiser_email") as string,
+    status: "draft",
+    organizer_id: user.id,
   };
 
-  console.log(
-    "🔍 DEBUG - Competition data featured field:",
-    competitionData.featured,
-  );
-
-  const { data: competition, error } = await supabase
+  const { error } = await supabase
     .from("competitions")
-    .insert([competitionData])
-    .select()
-    .single();
+    .insert([competitionData]);
 
   if (error) {
     console.error("Error creating competition:", error);
@@ -116,24 +91,6 @@ export async function createCompetition(
     };
   }
 
-  // Handle selected requirements
-  const selectedRequirements = formData.getAll("requirements") as string[];
-  if (selectedRequirements.length > 0 && competition) {
-    const requirementInserts = selectedRequirements.map((reqId) => ({
-      competition_id: competition.id,
-      requirement_option_id: reqId,
-    }));
-
-    const { error: reqError } = await supabase
-      .from("competition_requirements_selected")
-      .insert(requirementInserts);
-
-    if (reqError) {
-      console.error("Error saving requirements:", reqError);
-      // Don't fail the whole operation, just log the error
-    }
-  }
-
   revalidatePath("/admin");
   return {
     success: true,
@@ -142,7 +99,7 @@ export async function createCompetition(
 }
 
 export async function updateCompetition(
-  competitionId: string,
+  id: string,
   formData: FormData,
 ): Promise<ActionResult> {
   const supabase = await createClient();
@@ -173,72 +130,46 @@ export async function updateCompetition(
     };
   }
 
-  // Debug: Log the featured field value for update
-  const featuredValue = formData.get("featured");
-  console.log(
-    "🔍 DEBUG UPDATE - Featured field value:",
-    featuredValue,
-    "Type:",
-    typeof featuredValue,
-  );
-  console.log(
-    "🔍 DEBUG UPDATE - Featured boolean result:",
-    featuredValue === "true",
-  );
+  // Helper function to handle date fields with required fallback
+  const formatDate = (dateString: string | null, fallback?: string): string => {
+    if (!dateString || dateString.trim() === "") {
+      return fallback || new Date().toISOString();
+    }
+    return dateString;
+  };
 
-  // Handle entry criteria checkboxes for update
-  const entryCriteria = formData.getAll("entry_criteria") as string[];
-  const entryCriteriaText =
-    entryCriteria.length > 0 ? entryCriteria.join(", ") : null;
+  // Helper function to handle numeric fields
+  const parseNumber = (value: string | null): number | null => {
+    if (!value || value.trim() === "") return null;
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? null : parsed;
+  };
 
-  // Handle tags array for update
-  const tags = formData.getAll("tags") as string[];
-  const tagsArray = tags.length > 0 ? tags : null;
-
+  // Map form data to actual database columns with proper null handling
   const competitionData = {
     title: formData.get("title") as string,
     description: formData.get("description") as string,
-    detailed_description: entryCriteriaText,
-    participating_requirement: formData.get("participating_requirement") as string,
-    rules: formData.get("rules") as string,
+    detailed_description: formData.get("detailed_description") as string,
     category: formData.get("category") as string,
-    subcategory: formData.get("subcategory") as string,
-    difficulty_level: formData.get("difficulty_level") as string,
+    type_of_game: formData.get("type_of_game") as string,
+    start_date: formatDate(formData.get("start_date") as string),
+    end_date: formatDate(formData.get("end_date") as string),
+    submission_deadline: formatDate(formData.get("draw_date") as string), // Always provide a value
     prize_description: formData.get("prize_description") as string,
-    total_prize: formData.get("total_prize") as string,
-    start_date: formData.get("start_date") as string,
-    end_date: formData.get("end_date") as string,
-    submission_deadline: formData.get("submission_deadline") as string,
-
-    is_team_competition: formData.get("is_team_competition") === "true",
-    max_team_size: parseInt(formData.get("max_team_size") as string) || null,
-    min_team_size: parseInt(formData.get("min_team_size") as string) || 1,
-    organizer_name: formData.get("organizer_name") as string,
-    organizer_email: formData.get("organizer_email") as string,
-    organizer_website: formData.get("organizer_website") as string,
-    terms_conditions_url: formData.get("terms_conditions_url") as string,
+    prize_amount: parseNumber(formData.get("total_prize") as string),
+    prize_currency: "AUD",
     thumbnail_url: formData.get("thumbnail_url") as string,
-    banner_url: formData.get("banner_url") as string,
-    status: formData.get("status") as string,
-    featured: featuredValue === "true",
+    organizer_name: formData.get("organiser_name") as string,
+    organizer_website: formData.get("organiser_website") as string,
+    organizer_email: formData.get("organiser_email") as string,
+    status: formData.get("status") as string, // Include status field
     updated_at: new Date().toISOString(),
-    draw_date: formData.get("draw_date")
-      ? new Date(formData.get("draw_date") as string).toISOString()
-      : null,
-    permits: (formData.get("permits") as string) || null,
-    region: (formData.get("region") as string) || null,
-    tags: tagsArray,
   };
-
-  console.log(
-    "🔍 DEBUG UPDATE - Competition data featured field:",
-    competitionData.featured,
-  );
 
   const { error } = await supabase
     .from("competitions")
     .update(competitionData)
-    .eq("id", competitionId);
+    .eq("id", id);
 
   if (error) {
     console.error("Error updating competition:", error);
@@ -249,35 +180,76 @@ export async function updateCompetition(
     };
   }
 
-  // Update selected requirements
-  // First, delete existing requirements for this competition
-  await supabase
-    .from("competition_requirements_selected")
-    .delete()
-    .eq("competition_id", competitionId);
+  revalidatePath("/admin");
+  return {
+    success: true,
+    message: "Competition updated successfully",
+  };
+}
 
-  // Then insert new requirements
-  const selectedRequirements = formData.getAll("requirements") as string[];
-  if (selectedRequirements.length > 0) {
-    const requirementInserts = selectedRequirements.map((reqId) => ({
-      competition_id: competitionId,
-      requirement_option_id: reqId,
-    }));
+export async function updateCompetitionStatus(
+  competitionId: string,
+  newStatus: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
 
-    const { error: reqError } = await supabase
-      .from("competition_requirements_selected")
-      .insert(requirementInserts);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      success: false,
+      message: "Authentication required",
+      error: "User not authenticated",
+    };
+  }
 
-    if (reqError) {
-      console.error("Error updating requirements:", reqError);
-      // Don't fail the whole operation, just log the error
-    }
+  // Check admin role
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "admin") {
+    return {
+      success: false,
+      message: "Admin access required",
+      error: "Insufficient permissions",
+    };
+  }
+
+  // Validate status
+  const validStatuses = ["draft", "active", "completed", "cancelled"];
+  if (!validStatuses.includes(newStatus)) {
+    return {
+      success: false,
+      message: "Invalid status",
+      error: "Status must be one of: draft, active, completed, cancelled",
+    };
+  }
+
+  const { error } = await supabase
+    .from("competitions")
+    .update({
+      status: newStatus,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", competitionId);
+
+  if (error) {
+    console.error("Error updating competition status:", error);
+    return {
+      success: false,
+      message: "Failed to update competition status",
+      error: error.message || "Unknown database error",
+    };
   }
 
   revalidatePath("/admin");
   return {
     success: true,
-    message: "Competition updated successfully",
+    message: `Competition status updated to ${newStatus} successfully`,
   };
 }
 
@@ -482,6 +454,227 @@ export async function importCompetitionFromUrl(
       extractedData.thumbnail_url = ogImageMatch[1].trim();
     }
 
+    // Enhanced date extraction function with Australian date format support
+    function extractDatesFromContent(cleanText: string, html: string): {
+      startDate: string | null;
+      endDate: string | null;
+      drawDate: string | null;
+      issues: string[];
+    } {
+      const issues: string[] = [];
+      let startDate: string | null = null;
+      let endDate: string | null = null;
+      let drawDate: string | null = null;
+
+      // Australian timezone mapping
+      const timezoneMap: { [key: string]: string } = {
+        'AEST': '+10:00',
+        'AEDT': '+11:00',
+        'ACST': '+09:30',
+        'ACDT': '+10:30',
+        'AWST': '+08:00',
+        'AWDT': '+09:00',
+      };
+
+      // Enhanced date patterns for Australian formats
+      const datePatterns = [
+        // Australian DD/MM/YY and DD/MM/YYYY formats with times and timezones
+        /(?:begins?|starts?|commences?|opens?).*?(?:at\s+)?(\d{1,2}):(\d{2})\s*([ap]m)\s*([A-Z]{3,4})\s*on\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi,
+        /(?:ends?|closes?|finishes?).*?(?:at\s+)?(\d{1,2}):(\d{2})\s*([ap]m)\s*([A-Z]{3,4})\s*on\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi,
+        
+        // More flexible patterns for start/end dates
+        /(?:from|starting)\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4}).*?(?:to|until|ending)\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi,
+        /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*(?:-|to|until)\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi,
+        
+        // Draw/winner announcement dates
+        /(?:winner|draw|result).*?(?:announced?|drawn?|selected?).*?(?:on\s*)?(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi,
+        /(?:judging|selection).*?(?:date|on)\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi,
+        
+        // ISO format fallback
+        /(\d{4})-(\d{1,2})-(\d{1,2})/g,
+        
+        // US format fallback
+        /(\d{1,2})\/(\d{1,2})\/(\d{4})/g,
+      ];
+
+      // Function to convert 2-digit year to 4-digit year
+      function expandYear(year: string): string {
+        const yearNum = parseInt(year);
+        if (year.length === 2) {
+          // Assume years 00-30 are 2000-2030, 31-99 are 1931-1999
+          return yearNum <= 30 ? `20${year}` : `19${year}`;
+        }
+        return year;
+      }
+
+      // Function to parse Australian date format (DD/MM/YYYY)
+      function parseAustralianDate(day: string, month: string, year: string, hour?: string, minute?: string, ampm?: string, timezone?: string): string | null {
+        try {
+          const expandedYear = expandYear(year);
+          const dayNum = parseInt(day);
+          const monthNum = parseInt(month);
+          
+          // Validate date components
+          if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
+            return null;
+          }
+
+          let hourNum = 0;
+          let minuteNum = 0;
+
+          if (hour && minute && ampm) {
+            hourNum = parseInt(hour);
+            minuteNum = parseInt(minute);
+            
+            // Convert to 24-hour format
+            if (ampm.toLowerCase() === 'pm' && hourNum !== 12) {
+              hourNum += 12;
+            } else if (ampm.toLowerCase() === 'am' && hourNum === 12) {
+              hourNum = 0;
+            }
+          }
+
+          // Create date in local time first
+          const date = new Date(parseInt(expandedYear), monthNum - 1, dayNum, hourNum, minuteNum);
+          
+          // Convert to ISO string format for datetime-local input
+          return date.toISOString().slice(0, 16);
+        } catch (error) {
+          console.error('Error parsing Australian date:', error);
+          return null;
+        }
+      }
+
+      // Look for narrative date patterns like "begins at X and ends at Y"
+      const narrativePattern = /(?:promotion|competition|contest).*?begins?\s+at\s+(\d{1,2}):(\d{2})\s*([ap]m)\s*([A-Z]{3,4})\s+on\s+(\d{1,2})\/(\d{1,2})\/(\d{2,4}).*?ends?\s+at\s+(\d{1,2}):(\d{2})\s*([ap]m)\s*([A-Z]{3,4})\s+on\s+(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi;
+      
+      let narrativeMatch;
+      while ((narrativeMatch = narrativePattern.exec(cleanText)) !== null) {
+        // Start date components
+        const [, startHour, startMinute, startAmPm, startTz, startDay, startMonth, startYear,
+               endHour, endMinute, endAmPm, endTz, endDay, endMonth, endYear] = narrativeMatch;
+        
+        if (!startDate) {
+          startDate = parseAustralianDate(startDay, startMonth, startYear, startHour, startMinute, startAmPm, startTz);
+          if (startDate) {
+            issues.push(`Extracted start date: ${startDay}/${startMonth}/${startYear} ${startHour}:${startMinute} ${startAmPm} ${startTz}`);
+          }
+        }
+        
+        if (!endDate) {
+          endDate = parseAustralianDate(endDay, endMonth, endYear, endHour, endMinute, endAmPm, endTz);
+          if (endDate) {
+            issues.push(`Extracted end date: ${endDay}/${endMonth}/${endYear} ${endHour}:${endMinute} ${endAmPm} ${endTz}`);
+          }
+        }
+      }
+
+      // Look for individual start date patterns
+      if (!startDate) {
+        const startPatterns = [
+          /(?:begins?|starts?|commences?|opens?).*?(?:at\s+)?(\d{1,2}):(\d{2})\s*([ap]m)\s*([A-Z]{3,4})\s*on\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi,
+          /(?:from|starting).*?(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi,
+        ];
+
+        for (const pattern of startPatterns) {
+          let match;
+          while ((match = pattern.exec(cleanText)) !== null) {
+            if (match.length >= 7) {
+              // Pattern with time
+              const [, hour, minute, ampm, tz, day, month, year] = match;
+              startDate = parseAustralianDate(day, month, year, hour, minute, ampm, tz);
+            } else if (match.length >= 4) {
+              // Pattern without time
+              const [, day, month, year] = match;
+              startDate = parseAustralianDate(day, month, year);
+            }
+            
+            if (startDate) {
+              issues.push(`Extracted start date from: "${match[0]}"`);
+              break;
+            }
+          }
+          if (startDate) break;
+        }
+      }
+
+      // Look for individual end date patterns
+      if (!endDate) {
+        const endPatterns = [
+          /(?:ends?|closes?|finishes?).*?(?:at\s+)?(\d{1,2}):(\d{2})\s*([ap]m)\s*([A-Z]{3,4})\s*on\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi,
+          /(?:to|until|ending).*?(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi,
+        ];
+
+        for (const pattern of endPatterns) {
+          let match;
+          while ((match = pattern.exec(cleanText)) !== null) {
+            if (match.length >= 7) {
+              // Pattern with time
+              const [, hour, minute, ampm, tz, day, month, year] = match;
+              endDate = parseAustralianDate(day, month, year, hour, minute, ampm, tz);
+            } else if (match.length >= 4) {
+              // Pattern without time
+              const [, day, month, year] = match;
+              endDate = parseAustralianDate(day, month, year);
+            }
+            
+            if (endDate) {
+              issues.push(`Extracted end date from: "${match[0]}"`);
+              break;
+            }
+          }
+          if (endDate) break;
+        }
+      }
+
+      // Look for draw/winner announcement dates
+      const drawPatterns = [
+        /(?:winner|draw|result).*?(?:announced?|drawn?|selected?).*?(?:on\s*)?(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi,
+        /(?:judging|selection).*?(?:date|on)\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi,
+      ];
+
+      for (const pattern of drawPatterns) {
+        let match;
+        while ((match = pattern.exec(cleanText)) !== null) {
+          const [, day, month, year] = match;
+          drawDate = parseAustralianDate(day, month, year);
+          if (drawDate) {
+            issues.push(`Extracted draw date from: "${match[0]}"`);
+            break;
+          }
+        }
+        if (drawDate) break;
+      }
+
+      // Fallback: Look for any date ranges
+      if (!startDate || !endDate) {
+        const rangePattern = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*(?:-|to|until)\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/gi;
+        let rangeMatch;
+        while ((rangeMatch = rangePattern.exec(cleanText)) !== null) {
+          const [, startDay, startMonth, startYear, endDay, endMonth, endYear] = rangeMatch;
+          
+          if (!startDate) {
+            startDate = parseAustralianDate(startDay, startMonth, startYear);
+          }
+          if (!endDate) {
+            endDate = parseAustralianDate(endDay, endMonth, endYear);
+          }
+          
+          if (startDate && endDate) {
+            issues.push(`Extracted date range from: "${rangeMatch[0]}"`);
+            break;
+          }
+        }
+      }
+
+      return {
+        startDate,
+        endDate,
+        drawDate,
+        issues,
+      };
+    }
+
     // Enhanced date extraction
     const dateExtractionResults = extractDatesFromContent(cleanText, html);
     if (dateExtractionResults.startDate) {
@@ -530,21 +723,24 @@ export async function importCompetitionFromUrl(
     // Detect competition type and category
     const competitionType = detectCompetitionType(cleanText);
     extractedData.category = competitionType.category;
-    extractedData.difficulty_level = competitionType.gameType;
+    extractedData.type_of_game = competitionType.gameType;
 
-    // Extract permit information (for game of luck)
+    // Extract permit information with permit number extraction
     const permitInfo = extractPermitInformation(cleanText);
-    if (permitInfo) {
-      extractedData.permits = permitInfo;
+    if (permitInfo.permitNumber) {
+      extractedData.permit_number = permitInfo.permitNumber;
+    }
+    if (permitInfo.permitText) {
+      extractedData.permits = permitInfo.permitText;
     }
 
-    // Extract region information
-    const regionInfo = extractRegionInformation(cleanText);
-    if (regionInfo) {
-      extractedData.region = regionInfo;
+    // Extract thumbnail URL from various sources (image file URL location)
+    const thumbnailUrl = extractThumbnailUrl(html, url);
+    if (thumbnailUrl) {
+      extractedData.thumbnail_url = thumbnailUrl;
     }
 
-    // Extract organiser information
+    // Extract organiser information with email extraction
     const organiserInfo = extractOrganiserInfo(cleanText, html, url);
     if (organiserInfo.name) {
       extractedData.organizer_name = organiserInfo.name;
@@ -597,12 +793,6 @@ export async function importCompetitionFromUrl(
     // Set the link URL (the import URL provided)
     extractedData.banner_url = url;
 
-    // Extract thumbnail URL from various sources
-    const thumbnailUrl = extractThumbnailUrl(html, url);
-    if (thumbnailUrl) {
-      extractedData.thumbnail_url = thumbnailUrl;
-    }
-
     // Look for terms and conditions URL
     const termsUrl = extractTermsAndConditionsUrl(html, url);
     if (termsUrl) {
@@ -629,499 +819,146 @@ export async function importCompetitionFromUrl(
   }
 }
 
-// Helper function to extract dates from content
-function extractDatesFromContent(cleanText: string, html: string) {
-  const issues: string[] = [];
-  let startDate: string | null = null;
-  let endDate: string | null = null;
-  let drawDate: string | null = null;
+// Helper functions for data extraction
+function extractPrizeInformation(cleanText: string, html: string): {
+  description: string | null;
+  totalPrize: string | null;
+} {
+  let description: string | null = null;
+  let totalPrize: string | null = null;
 
-  // Enhanced date patterns
-  const datePatterns = [
-    // ISO format
-    /([0-9]{4}-[0-9]{2}-[0-9]{2})/g,
-    // US format
-    /([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4})/g,
-    // UK format
-    /([0-9]{1,2}-[0-9]{1,2}-[0-9]{4})/g,
-    // Written format
-    /((?:january|february|march|april|may|june|july|august|september|october|november|december)\s+[0-9]{1,2},?\s+[0-9]{4})/gi,
-    // Short month format
-    /((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+[0-9]{1,2},?\s+[0-9]{4})/gi,
+  // Enhanced prize value patterns - more comprehensive
+  const prizeValuePatterns = [
+    // Direct monetary values
+    /(?:prize|reward|win|winner|value|worth).*?(\$[\d,]+(?:\.\d{2})?)/gi,
+    /(\$[\d,]+(?:\.\d{2})?).*?(?:prize|reward|cash|value|worth|win)/gi,
+    /(?:total|grand|major).*?prize.*?(\$[\d,]+(?:\.\d{2})?)/gi,
+    // Trip values and approximations
+    /trip.*?(?:worth|value|valued).*?(\$[\d,]+(?:\.\d{2})?)/gi,
+    /(\$[\d,]+(?:\.\d{2})?).*?trip/gi,
+    // Gift card values
+    /gift.*?(?:card|voucher).*?(\$[\d,]+(?:\.\d{2})?)/gi,
+    /(\$[\d,]+(?:\.\d{2})?).*?gift.*?(?:card|voucher)/gi,
   ];
 
-  const allDates: string[] = [];
-
-  datePatterns.forEach((pattern) => {
-    const matches = cleanText.match(pattern);
-    if (matches) {
-      allDates.push(...matches);
-    }
-  });
-
-  // Look for contextual date information
-  const startKeywords = [
-    "start",
-    "begin",
-    "open",
-    "launch",
-    "commence",
-    "from",
-  ];
-  const endKeywords = [
-    "end",
-    "close",
-    "deadline",
-    "until",
-    "expires",
-    "finish",
-    "to",
-  ];
-  const drawKeywords = [
-    "draw",
-    "drawn",
-    "drawing",
-    "winner announced",
-    "winner selected",
-    "results announced",
-    "judged",
-    "judging",
-    "announce",
-    "announced",
-    "announcement",
-    "reveal",
-    "revealed",
-    "declare",
-    "declared",
-  ];
-
-  // Try to find dates with context
-  for (const keyword of startKeywords) {
-    const regex = new RegExp(
-      `${keyword}[^\d]*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{4}|[0-9]{4}-[0-9]{2}-[0-9]{2}|(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+[0-9]{1,2},?\s+[0-9]{4})`,
-      "gi",
-    );
-    const match = cleanText.match(regex);
-    if (match && !startDate) {
-      startDate = parseAndFormatDate(
-        match[0].replace(new RegExp(keyword, "gi"), "").trim(),
-      );
+  // Try to find monetary values
+  for (const pattern of prizeValuePatterns) {
+    const match = pattern.exec(cleanText);
+    if (match && match[1]) {
+      totalPrize = match[1];
       break;
     }
   }
 
-  for (const keyword of endKeywords) {
-    const regex = new RegExp(
-      `${keyword}[^\d]*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{4}|[0-9]{4}-[0-9]{2}-[0-9]{2}|(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+[0-9]{1,2},?\s+[0-9]{4})`,
-      "gi",
-    );
-    const match = cleanText.match(regex);
-    if (match && !endDate) {
-      endDate = parseAndFormatDate(
-        match[0].replace(new RegExp(keyword, "gi"), "").trim(),
-      );
-      break;
+  // Enhanced prize description patterns - more comprehensive
+  const prizeDescPatterns = [
+    // Major prize descriptions
+    /(?:major|main|grand|first).*?prize.*?:?\s*([^.!?\n]{20,300})/gi,
+    /(?:winner|winners).*?(?:will receive|receive|gets?|wins?).*?([^.!?\n]{20,300})/gi,
+    /(?:you could win|win|prize includes?).*?([^.!?\n]{20,300})/gi,
+    // Trip descriptions
+    /trip.*?to.*?([^.!?\n]{20,200})/gi,
+    /(?:family of \d+|for \d+ people).*?([^.!?\n]{20,200})/gi,
+    // Gift descriptions
+    /(?:gift cards?|vouchers?).*?([^.!?\n]{20,200})/gi,
+    // Multiple prizes
+    /(?:minor prizes?|additional prizes?).*?([^.!?\n]{20,200})/gi,
+    // Value approximations
+    /(?:value|worth|includes?).*?([^.!?\n]{30,300})/gi,
+  ];
+
+  // Try to find prize descriptions
+  for (const pattern of prizeDescPatterns) {
+    const match = pattern.exec(cleanText);
+    if (match && match[1]) {
+      const desc = match[1].trim();
+      // Filter out very short or generic descriptions
+      if (desc.length > 15 && !desc.toLowerCase().includes('click here') && !desc.toLowerCase().includes('read more')) {
+        description = desc;
+        break;
+      }
     }
   }
 
-  // Look for draw dates specifically (date of announcing the winner)
-  for (const keyword of drawKeywords) {
-    const regex = new RegExp(
-      `${keyword}[^\d]*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{4}|[0-9]{4}-[0-9]{2}-[0-9]{2}|(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+[0-9]{1,2},?\s+[0-9]{4})`,
-      "gi",
-    );
-    const match = cleanText.match(regex);
-    if (match && !drawDate) {
-      drawDate = parseAndFormatDate(
-        match[0].replace(new RegExp(keyword, "gi"), "").trim(),
-      );
-      break;
-    }
-  }
-
-  // Enhanced draw date detection with more specific patterns
-  if (!drawDate) {
-    const drawPatterns = [
-      /draw(?:ing)?\s+(?:date|on|will be)\s*:?\s*([^\n.!?]+)/gi,
-      /winner(?:s)?\s+(?:announced|selected|drawn)\s*:?\s*([^\n.!?]+)/gi,
-      /results?\s+(?:announced|available)\s*:?\s*([^\n.!?]+)/gi,
-      /judg(?:ed|ing)\s+(?:on|date)\s*:?\s*([^\n.!?]+)/gi,
+  // If no specific description found, try to extract from context around prize mentions
+  if (!description) {
+    const contextPatterns = [
+      /prize[^.!?\n]*([^.!?\n]{50,250})/gi,
+      /win[^.!?\n]*([^.!?\n]{50,250})/gi,
     ];
 
-    for (const pattern of drawPatterns) {
-      const match = cleanText.match(pattern);
+    for (const pattern of contextPatterns) {
+      const match = pattern.exec(cleanText);
       if (match && match[1]) {
-        const dateStr = match[1].trim();
-        const parsedDate = parseAndFormatDate(dateStr);
-        if (parsedDate) {
-          drawDate = parsedDate;
+        const desc = match[1].trim();
+        if (desc.length > 30) {
+          description = desc;
           break;
         }
       }
     }
   }
 
-  // If no contextual dates found, try to infer from available dates
-  if (!startDate && !endDate && allDates.length > 0) {
-    const parsedDates = allDates
-      .map((d) => parseAndFormatDate(d))
-      .filter(Boolean)
-      .sort();
-    if (parsedDates.length >= 2) {
-      startDate = parsedDates[0];
-      endDate = parsedDates[parsedDates.length - 1];
-      // If we have 3 or more dates, the middle one might be the draw date
-      if (parsedDates.length >= 3 && !drawDate) {
-        drawDate = parsedDates[1];
-      }
-      issues.push(
-        "Inferred start and end dates from available dates - please verify",
-      );
-    } else if (parsedDates.length === 1) {
-      endDate = parsedDates[0];
-      issues.push(
-        "Found one date, assumed as end date - please set start date",
-      );
-    }
-  }
-
-  return { startDate, endDate, drawDate, issues };
+  return { description, totalPrize };
 }
 
-// Helper function to parse and format dates
-function parseAndFormatDate(dateStr: string): string | null {
-  try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) {
-      return null;
-    }
-    // Set time to 00:00 as requested
-    date.setHours(0, 0, 0, 0);
-    return date.toISOString().slice(0, 16);
-  } catch {
-    return null;
-  }
-}
-
-// Helper function to extract prize information
-function extractPrizeInformation(cleanText: string, html: string) {
-  let description = "";
-  let totalPrize = "";
-
-  // Enhanced prize description patterns - anything related to winning prize
-  const prizeDescriptionPatterns = [
-    // Prize sentences with various keywords
-    /(?:prize|win|winner|award|reward|giveaway)[^.!?]*[.!?]/gi,
-    // Prize pool or total prize mentions
-    /(?:prize pool|total prize|grand prize|first prize|main prize)[^.!?]*[.!?]/gi,
-    // Prize items or descriptions
-    /(?:you could win|chance to win|up for grabs|prizes include)[^.!?]*[.!?]/gi,
-    // Prize value descriptions
-    /(?:worth|valued at|value of)[^.!?]*[.!?]/gi,
-  ];
-
-  // Enhanced total prize patterns - focus on monetary amounts and totals
-  const totalPrizePatterns = [
-    // Total prize pool mentions
-    /(?:total prize|prize pool|grand total)[^\d]*([\$£€]?[0-9,]+(?:\.[0-9]{2})?)/gi,
-    // Prize worth mentions
-    /(?:worth|valued at|value of)[^\d]*([\$£€]?[0-9,]+(?:\.[0-9]{2})?)/gi,
-    // Win amount mentions
-    /(?:win|winner receives|prize of)[^\d]*([\$£€]?[0-9,]+(?:\.[0-9]{2})?)/gi,
-    // Currency amounts with context
-    /([\$£€][0-9,]+(?:\.[0-9]{2})?)(?:\s*(?:prize|total|worth|value))/gi,
-    // Large currency amounts (likely prizes)
-    /([\$£€][0-9,]{4,}(?:\.[0-9]{2})?)/g,
-  ];
-
-  // Extract prize descriptions
-  const sentences = cleanText.split(/[.!?]+/);
-  const prizeDescriptions: string[] = [];
-
-  for (const sentence of sentences) {
-    const trimmed = sentence.trim();
-    if (trimmed.length < 10) continue;
-
-    const lowerSentence = trimmed.toLowerCase();
-
-    // Check if sentence contains prize-related keywords
-    if (
-      lowerSentence.includes("prize") ||
-      lowerSentence.includes("win") ||
-      lowerSentence.includes("award") ||
-      lowerSentence.includes("reward") ||
-      lowerSentence.includes("giveaway") ||
-      lowerSentence.includes("competition") ||
-      lowerSentence.includes("contest") ||
-      lowerSentence.includes("draw") ||
-      lowerSentence.includes("raffle") ||
-      lowerSentence.includes("up for grabs") ||
-      lowerSentence.includes("chance to win") ||
-      lowerSentence.includes("you could win")
-    ) {
-      // Avoid navigation, legal, or irrelevant sentences
-      if (
-        !lowerSentence.includes("cookie") &&
-        !lowerSentence.includes("privacy") &&
-        !lowerSentence.includes("terms") &&
-        !lowerSentence.includes("navigation") &&
-        !lowerSentence.includes("menu") &&
-        !lowerSentence.includes("login") &&
-        !lowerSentence.includes("search") &&
-        trimmed.length <= 300
-      ) {
-        prizeDescriptions.push(trimmed);
-      }
-    }
-  }
-
-  // Combine prize descriptions
-  if (prizeDescriptions.length > 0) {
-    description = prizeDescriptions.slice(0, 3).join(". ").substring(0, 500);
-  }
-
-  // Extract total prize amounts
-  const prizeAmounts: string[] = [];
-
-  for (const pattern of totalPrizePatterns) {
-    const matches = cleanText.match(pattern);
-    if (matches) {
-      for (const match of matches) {
-        // Extract the monetary amount from the match
-        const amountMatch = match.match(/[\$£€]?[0-9,]+(?:\.[0-9]{2})?/);
-        if (amountMatch) {
-          prizeAmounts.push(amountMatch[0]);
-        }
-      }
-    }
-  }
-
-  // Select the largest or most relevant prize amount
-  if (prizeAmounts.length > 0) {
-    // Sort by numeric value to get the largest amount
-    const sortedAmounts = prizeAmounts
-      .map((amount) => ({
-        original: amount,
-        numeric: parseFloat(amount.replace(/[\$£€,]/g, "")),
-      }))
-      .filter((item) => !isNaN(item.numeric))
-      .sort((a, b) => b.numeric - a.numeric);
-
-    if (sortedAmounts.length > 0) {
-      totalPrize = sortedAmounts[0].original;
-    }
-  }
-
-  // If no total prize found but we have descriptions, try to extract from descriptions
-  if (!totalPrize && description) {
-    const amountInDescription = description.match(
-      /[\$£€][0-9,]+(?:\.[0-9]{2})?/,
-    );
-    if (amountInDescription) {
-      totalPrize = amountInDescription[0];
-    }
-  }
-
-  return {
-    description: description || "Prize details to be confirmed",
-    totalPrize: totalPrize || "Prize value to be confirmed",
-  };
-}
-
-// Helper function to detect entry criteria
 function detectEntryCriteria(cleanText: string): string[] {
   const criteria: string[] = [];
-  const text = cleanText.toLowerCase();
+  const criteriaPatterns = [
+    /(?:must be|need to be|required to be).*?(\d+).*?(?:years? old|or older)/gi,
+    /(?:resident|citizen).*?(?:of|in)\s+([A-Za-z\s]+)/gi,
+    /(?:follow|like|subscribe)/gi,
+    /(?:share|repost|tag)/gi,
+  ];
 
-  // Check for age restrictions
-  if (
-    text.includes("18+") ||
-    text.includes("18 and over") ||
-    text.includes("eighteen") ||
-    text.includes("adult") ||
-    text.includes("must be 18")
-  ) {
-    criteria.push("18+");
-  }
-
-  // Check for residency requirements
-  if (
-    text.includes("australia") ||
-    text.includes("australian") ||
-    text.includes("au resident") ||
-    text.includes("aus only") ||
-    text.includes("australia only")
-  ) {
-    criteria.push("AU Residents");
-  }
-
-  // Check for membership requirements
-  if (
-    text.includes("member") ||
-    text.includes("membership") ||
-    text.includes("members only") ||
-    text.includes("join") ||
-    text.includes("sign up")
-  ) {
-    criteria.push("Members only");
+  for (const pattern of criteriaPatterns) {
+    const matches = cleanText.match(pattern);
+    if (matches) {
+      criteria.push(...matches.map(m => m.trim()));
+    }
   }
 
   return criteria;
 }
 
-// Helper function to extract participating requirements
 function extractParticipatingRequirements(cleanText: string): string | null {
-  const requirementKeywords = [
-    "follow",
-    "like",
-    "share",
-    "comment",
-    "subscribe",
-    "tag",
-    "post",
-    "upload",
-    "purchase",
-    "buy",
-    "visit",
-    "download",
-    "register",
-    "sign up",
-    "enter",
-    "complete",
-    "fill",
-    "answer",
-    "submit",
-    "photo",
-    "video",
-    "review",
+  const reqPatterns = [
+    // Specific requirement patterns
+    /(?:to enter|to participate|entry requirements?|eligibility).*?:?\s*([^.!?\n]{30,300})/gi,
+    /(?:must|need to|required to|you must).*?([^.!?\n]{30,300})/gi,
+    /(?:eligible|eligibility).*?([^.!?\n]{30,300})/gi,
+    /(?:requirements?|criteria).*?([^.!?\n]{30,300})/gi,
+    // Age and residency requirements
+    /(?:18\+|18 years|over 18|aged 18).*?([^.!?\n]{20,200})/gi,
+    /(?:australian residents?|residents? of australia).*?([^.!?\n]{20,200})/gi,
+    // Purchase requirements
+    /(?:purchase|buy|receipt).*?required.*?([^.!?\n]{20,200})/gi,
+    /(?:retain receipt|proof of purchase).*?([^.!?\n]{20,200})/gi,
   ];
 
-  const sentences = cleanText.split(/[.!?]+/);
-
-  for (const sentence of sentences) {
-    const lowerSentence = sentence.toLowerCase();
-
-    // Look for sentences containing requirement keywords
-    if (
-      requirementKeywords.some((keyword) => lowerSentence.includes(keyword))
-    ) {
-      // Check if it's describing what to do
-      if (
-        lowerSentence.includes("to enter") ||
-        lowerSentence.includes("must") ||
-        lowerSentence.includes("need to") ||
-        lowerSentence.includes("required") ||
-        lowerSentence.includes("how to") ||
-        lowerSentence.includes("steps")
-      ) {
-        return sentence.trim().substring(0, 300);
-      }
-    }
-  }
-
-  return null;
-}
-
-// Helper function to extract thumbnail URL
-function extractThumbnailUrl(html: string, baseUrl: string): string | null {
-  const thumbnailPatterns = [
-    // Open Graph image (most reliable)
-    /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
-    // Twitter card image
-    /<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i,
-    // Standard meta image
-    /<meta[^>]*name=["']image["'][^>]*content=["']([^"']+)["']/i,
-    // Link rel image
-    /<link[^>]*rel=["']image_src["'][^>]*href=["']([^"']+)["']/i,
-    // Favicon as fallback
-    /<link[^>]*rel=["'](?:icon|shortcut icon)["'][^>]*href=["']([^"']+)["']/i,
-  ];
-
-  for (const pattern of thumbnailPatterns) {
-    const match = html.match(pattern);
+  for (const pattern of reqPatterns) {
+    const match = pattern.exec(cleanText);
     if (match && match[1]) {
-      let imageUrl = match[1].trim();
-
-      // Convert relative URLs to absolute
-      if (imageUrl.startsWith("/")) {
-        try {
-          const urlObj = new URL(baseUrl);
-          imageUrl = `${urlObj.protocol}//${urlObj.host}${imageUrl}`;
-        } catch {
-          continue;
-        }
-      } else if (imageUrl.startsWith("//")) {
-        try {
-          const urlObj = new URL(baseUrl);
-          imageUrl = `${urlObj.protocol}${imageUrl}`;
-        } catch {
-          continue;
-        }
-      }
-
-      // Validate that it's a proper image URL
-      if (
-        imageUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ||
-        imageUrl.includes("image")
-      ) {
-        return imageUrl;
+      const req = match[1].trim();
+      // Filter out very short or generic requirements
+      if (req.length > 20 && !req.toLowerCase().includes('click here')) {
+        return req;
       }
     }
   }
 
-  return null;
-}
-
-// Helper function to extract terms and conditions URL
-function extractTermsAndConditionsUrl(
-  html: string,
-  baseUrl: string,
-): string | null {
-  const termsPatterns = [
-    // Link elements with terms-related text
-    /<a[^>]*href=["']([^"']*(?:terms|conditions|rules|legal|privacy)[^"']*)["'][^>]*>(?:terms|conditions|rules|legal|privacy)/gi,
-    // More specific terms and conditions links
-    /<a[^>]*href=["']([^"']+)["'][^>]*>\s*(?:terms\s*(?:and|&)?\s*conditions|terms\s*of\s*(?:use|service)|competition\s*rules|legal\s*terms)/gi,
-    // Footer links (common location for terms)
-    /<footer[^>]*>[\s\S]*?<a[^>]*href=["']([^"']*(?:terms|conditions|rules)[^"']*)["']/gi,
+  // Look for bullet points or numbered lists that might contain requirements
+  const listPatterns = [
+    /(?:•|\*|\d+\.)\s*([^•*\n]{20,200})/g,
+    /(?:requirements?|eligibility)[\s\S]*?(?:•|\*|\d+\.)\s*([^•*\n]{20,200})/gi,
   ];
 
-  for (const pattern of termsPatterns) {
-    const matches = html.match(pattern);
-    if (matches) {
-      for (const match of matches) {
-        const linkMatch = pattern.exec(match);
-        if (linkMatch && linkMatch[1]) {
-          let termsUrl = linkMatch[1].trim();
-
-          // Convert relative URLs to absolute
-          if (termsUrl.startsWith("/")) {
-            try {
-              const urlObj = new URL(baseUrl);
-              termsUrl = `${urlObj.protocol}//${urlObj.host}${termsUrl}`;
-            } catch {
-              continue;
-            }
-          } else if (termsUrl.startsWith("//")) {
-            try {
-              const urlObj = new URL(baseUrl);
-              termsUrl = `${urlObj.protocol}${termsUrl}`;
-            } catch {
-              continue;
-            }
-          }
-
-          // Validate that it looks like a terms URL
-          const lowerUrl = termsUrl.toLowerCase();
-          if (
-            lowerUrl.includes("terms") ||
-            lowerUrl.includes("conditions") ||
-            lowerUrl.includes("rules") ||
-            lowerUrl.includes("legal")
-          ) {
-            return termsUrl;
-          }
-        }
+  for (const pattern of listPatterns) {
+    let match;
+    while ((match = pattern.exec(cleanText)) !== null) {
+      const req = match[1].trim();
+      if (req.length > 20) {
+        return req;
       }
     }
   }
@@ -1129,151 +966,129 @@ function extractTermsAndConditionsUrl(
   return null;
 }
 
-// Helper function to extract rules and winning methods
 function extractRulesAndWinningMethods(cleanText: string): string | null {
-  const ruleKeywords = [
-    "rules",
-    "terms",
-    "conditions",
-    "winner",
-    "draw",
-    "judge",
-    "selection",
-    "criteria",
-    "eligible",
-    "disqualified",
-    "random",
-    "merit",
-    "best",
+  const rulePatterns = [
+    /(?:rules|terms|conditions).*?([^.!?]{50,500})/gi,
+    /(?:how to win|winning method).*?([^.!?]{50,300})/gi,
+    /(?:judging|selection).*?criteria.*?([^.!?]{50,300})/gi,
   ];
 
-  const sentences = cleanText.split(/[.!?]+/);
-  const relevantSentences: string[] = [];
-
-  for (const sentence of sentences) {
-    const lowerSentence = sentence.toLowerCase();
-
-    if (ruleKeywords.some((keyword) => lowerSentence.includes(keyword))) {
-      relevantSentences.push(sentence.trim());
+  for (const pattern of rulePatterns) {
+    const match = pattern.exec(cleanText);
+    if (match) {
+      return match[1].trim();
     }
-  }
-
-  if (relevantSentences.length > 0) {
-    return relevantSentences.slice(0, 3).join(". ").substring(0, 500);
   }
 
   return null;
 }
 
-// Helper function to detect competition type
-function detectCompetitionType(cleanText: string) {
+function detectCompetitionType(cleanText: string): {
+  category: string;
+  gameType: string;
+} {
   const text = cleanText.toLowerCase();
-
-  let category = "Open (free)";
-  let gameType = "Game of Skill";
-
-  // Detect category based on enhanced criteria
-  if (
-    text.includes("purchase") ||
-    text.includes("buy") ||
-    text.includes("payment") ||
-    text.includes("by invitation") ||
-    text.includes("closed group") ||
-    text.includes("members only") ||
-    text.includes("exclusive")
-  ) {
+  
+  // Category detection - MUST use only these 4 values
+  let category = "Open (free)"; // Default to free
+  
+  // Check for purchase requirements first (highest barrier)
+  if (text.includes("purchase") || text.includes("buy") || text.includes("spend") || 
+      text.includes("receipt") || text.includes("proof of purchase") ||
+      text.includes("must retain receipt") || text.includes("purchase required")) {
     category = "Purchase Required";
-  } else if (
-    text.includes("survey") ||
-    text.includes("engagement") ||
-    text.includes("participation entry") ||
-    text.includes("complete") ||
-    text.includes("answer") ||
-    text.includes("quiz") ||
-    text.includes("form") ||
-    text.includes("entry fee") ||
-    text.includes("cost") ||
-    text.includes("pay")
-  ) {
-    category = "Barrier (Medium)";
-  } else if (
-    text.includes("email") ||
-    text.includes("subscribe") ||
-    text.includes("newsletter") ||
-    text.includes("marketing") ||
-    text.includes("consent") ||
-    text.includes("personal information") ||
-    text.includes("share") ||
-    text.includes("sign up") ||
-    text.includes("register")
-  ) {
-    category = "Barrier (Low)";
   }
+  // Check for medium barriers
+  else if (text.includes("entry fee") || text.includes("registration fee") || 
+           text.includes("membership required") || text.includes("subscription") ||
+           text.includes("premium") || text.includes("paid account")) {
+    category = "Barrier (Medium)";
+  }
+  // Check for low barriers  
+  else if (text.includes("follow") || text.includes("like") || text.includes("subscribe") ||
+           text.includes("share") || text.includes("tag") || text.includes("repost") ||
+           text.includes("sign up") || text.includes("register") || text.includes("email required") ||
+           text.includes("social media") || text.includes("facebook") || text.includes("instagram")) {
+    category = "Barrier (low)";
+  }
+  // Otherwise remains "Open (free)"
 
-  // Detect game type - Game of Luck vs Game of Skill
-  if (
-    text.includes("random draw") ||
-    text.includes("randomly selected") ||
-    text.includes("draw") ||
-    text.includes("luck") ||
-    text.includes("chance") ||
-    text.includes("lottery") ||
-    text.includes("raffle") ||
-    text.includes("sweepstake") ||
-    text.includes("giveaway") ||
-    text.includes("random")
-  ) {
+  // Game type detection - MUST use only these 2 values
+  let gameType = "Game of Skill"; // Default to skill-based
+  
+  // Check for luck/chance indicators
+  if (text.includes("random") || text.includes("draw") || text.includes("luck") || 
+      text.includes("chance") || text.includes("lottery") || text.includes("raffle") ||
+      text.includes("sweepstakes") || text.includes("randomly selected") ||
+      text.includes("winner will be drawn") || text.includes("chance to win") ||
+      text.includes("game of chance")) {
     gameType = "Game of Luck";
-  } else if (
-    text.includes("best") ||
-    text.includes("judge") ||
-    text.includes("merit") ||
-    text.includes("skill") ||
-    text.includes("creative") ||
-    text.includes("talent") ||
-    text.includes("competition") ||
-    text.includes("contest") ||
-    text.includes("vote") ||
-    text.includes("winner selected")
-  ) {
+  }
+  // Check for skill indicators (reinforces default)
+  else if (text.includes("judg") || text.includes("best") || text.includes("creative") ||
+           text.includes("skill") || text.includes("talent") || text.includes("competition") ||
+           text.includes("contest") || text.includes("submit") || text.includes("entry") ||
+           text.includes("criteria") || text.includes("winner selected")) {
     gameType = "Game of Skill";
   }
 
   return { category, gameType };
 }
 
-// Helper function to extract permit information
-function extractPermitInformation(cleanText: string): string | null {
-  const text = cleanText.toLowerCase();
-  const permitKeywords = [
-    "permit",
-    "licence",
-    "license",
-    "authority",
-    "gaming",
-    "lottery",
-    "raffle",
-    "acma",
-    "austrac",
-    "gambling",
-    "regulation",
-    "compliance",
+function extractPermitInformation(cleanText: string): {
+  permitNumber: string | null;
+  permitText: string | null;
+} {
+  let permitNumber: string | null = null;
+  let permitText: string | null = null;
+
+  // Permit number patterns
+  const permitPatterns = [
+    /permit.*?(?:no|number|#).*?([A-Z0-9\/\-]{5,20})/gi,
+    /licence.*?(?:no|number|#).*?([A-Z0-9\/\-]{5,20})/gi,
+    /authorization.*?([A-Z0-9\/\-]{5,20})/gi,
   ];
 
-  const sentences = cleanText.split(/[.!?]+/);
+  for (const pattern of permitPatterns) {
+    const match = pattern.exec(cleanText);
+    if (match) {
+      permitNumber = match[1].trim();
+      permitText = match[0].trim();
+      break;
+    }
+  }
 
-  for (const sentence of sentences) {
-    const lowerSentence = sentence.toLowerCase();
+  return { permitNumber, permitText };
+}
 
-    if (permitKeywords.some((keyword) => lowerSentence.includes(keyword))) {
-      // Look for permit numbers or specific permit information
-      if (
-        lowerSentence.includes("permit") ||
-        lowerSentence.includes("licence") ||
-        lowerSentence.includes("license") ||
-        lowerSentence.includes("authority")
-      ) {
-        return sentence.trim().substring(0, 200);
+function extractThumbnailUrl(html: string, baseUrl: string): string | null {
+  // Try Open Graph image first
+  const ogImageMatch = html.match(
+    /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i
+  );
+  if (ogImageMatch) {
+    return ogImageMatch[1];
+  }
+
+  // Try Twitter card image
+  const twitterImageMatch = html.match(
+    /<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i
+  );
+  if (twitterImageMatch) {
+    return twitterImageMatch[1];
+  }
+
+  // Try to find first large image
+  const imgMatches = html.match(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi);
+  if (imgMatches) {
+    for (const imgMatch of imgMatches) {
+      const srcMatch = imgMatch.match(/src=["']([^"']+)["']/i);
+      if (srcMatch) {
+        const src = srcMatch[1];
+        // Skip small images, icons, and logos
+        if (!src.includes('icon') && !src.includes('logo') && !src.includes('favicon')) {
+          return src.startsWith('http') ? src : new URL(src, baseUrl).href;
+        }
       }
     }
   }
@@ -1281,233 +1096,143 @@ function extractPermitInformation(cleanText: string): string | null {
   return null;
 }
 
-// Helper function to extract region information
-function extractRegionInformation(cleanText: string): string | null {
-  const text = cleanText.toLowerCase();
-  const regions = [
-    {
-      name: "Nationwide",
-      keywords: ["nationwide", "australia wide", "all states", "national"],
-    },
-    { name: "Victoria", keywords: ["victoria", "vic", "melbourne"] },
-    { name: "NSW", keywords: ["new south wales", "nsw", "sydney"] },
-    {
-      name: "Western Australia",
-      keywords: ["western australia", "wa", "perth"],
-    },
-    { name: "Queensland", keywords: ["queensland", "qld", "brisbane"] },
-    {
-      name: "Northern Territory",
-      keywords: ["northern territory", "nt", "darwin"],
-    },
-    { name: "Tasmania", keywords: ["tasmania", "tas", "hobart"] },
-    {
-      name: "South Australia",
-      keywords: ["south australia", "sa", "adelaide"],
-    },
-    {
-      name: "ACT",
-      keywords: ["act", "australian capital territory", "canberra"],
-    },
+function extractOrganiserInfo(cleanText: string, html: string, url: string): {
+  name: string | null;
+  website: string | null;
+  email: string | null;
+} {
+  let name: string | null = null;
+  let website: string | null = null;
+  let email: string | null = null;
+
+  // Extract organizer name
+  const namePatterns = [
+    /(?:organized by|presented by|hosted by|brought to you by)\s+([^.!?\n]{5,50})/gi,
+    /(?:organizer|organiser).*?([A-Za-z\s&]{5,50})/gi,
   ];
 
-  // Check for specific regions
-  for (const region of regions) {
-    if (region.keywords.some((keyword) => text.includes(keyword))) {
-      return region.name;
+  for (const pattern of namePatterns) {
+    const match = pattern.exec(cleanText);
+    if (match) {
+      name = match[1].trim();
+      break;
     }
   }
 
-  // Look for residency requirements
-  if (
-    text.includes("australian residents") ||
-    text.includes("australia only") ||
-    text.includes("au residents")
-  ) {
-    return "Nationwide";
-  }
-
-  return null;
-}
-
-// Helper function to extract organiser information
-function extractOrganiserInfo(cleanText: string, html: string, url: string) {
-  let name = "";
-  let website = "";
-  let email = "";
-
-  // Try to get organiser from URL domain as fallback
+  // Extract website (use the base URL as fallback)
   try {
     const urlObj = new URL(url);
-    const domain = urlObj.hostname.replace("www.", "");
-    const domainName = domain.split(".")[0];
-    // Capitalize first letter for better presentation
-    const fallbackName =
-      domainName.charAt(0).toUpperCase() + domainName.slice(1);
     website = `${urlObj.protocol}//${urlObj.hostname}`;
-
-    // Use domain as fallback name only if no better name is found
-    name = fallbackName;
-  } catch {}
-
-  // Look for brand/business names in meta tags and structured data
-  const orgPatterns = [
-    // Open Graph site name (most reliable)
-    /<meta[^>]*property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i,
-    // Author meta tag
-    /<meta[^>]*name=["']author["'][^>]*content=["']([^"']+)["']/i,
-    // Publisher meta tag
-    /<meta[^>]*name=["']publisher["'][^>]*content=["']([^"']+)["']/i,
-    // Application name
-    /<meta[^>]*name=["']application-name["'][^>]*content=["']([^"']+)["']/i,
-    // JSON-LD structured data for organization
-    /"@type"\s*:\s*"Organization"[^}]*"name"\s*:\s*"([^"]+)"/i,
-    // Title tag (extract brand name before separators)
-    /<title[^>]*>([^<]*?)(?:\s*[-|–—]\s*[^<]*)?<\/title>/i,
-  ];
-
-  for (const pattern of orgPatterns) {
-    const match = html.match(pattern);
-    if (match && match[1]) {
-      const extractedName = match[1].trim();
-      // Filter out generic terms and competition-related words
-      const lowerName = extractedName.toLowerCase();
-      if (
-        !lowerName.includes("competition") &&
-        !lowerName.includes("contest") &&
-        !lowerName.includes("giveaway") &&
-        !lowerName.includes("win") &&
-        !lowerName.includes("prize") &&
-        !lowerName.includes("draw") &&
-        !lowerName.includes("raffle") &&
-        !lowerName.includes("sweepstake") &&
-        extractedName.length > 2 &&
-        extractedName.length < 100
-      ) {
-        name = extractedName.substring(0, 50);
-        break;
-      }
-    }
+  } catch (e) {
+    // Ignore URL parsing errors
   }
 
-  // Look for business/brand mentions in content with better context
-  const brandPatterns = [
-    // Direct brand mentions
-    /(?:presented by|sponsored by|brought to you by|in partnership with|by)\s+([A-Z][A-Za-z0-9\s&.,-]{2,40})/gi,
-    // Copyright mentions
-    /©\s*(?:[0-9]{4}\s+)?([A-Z][A-Za-z0-9\s&.,-]{2,40})/gi,
-    // Company/brand context
-    /(?:company|brand|business|retailer|store)\s+([A-Z][A-Za-z0-9\s&.,-]{2,40})/gi,
-  ];
-
-  for (const pattern of brandPatterns) {
-    const matches = cleanText.match(pattern);
-    if (matches) {
-      for (const match of matches) {
-        const brandMatch = pattern.exec(match);
-        if (brandMatch && brandMatch[1] && !name.includes(brandMatch[1])) {
-          const brandName = brandMatch[1].trim();
-          if (brandName.length > 2 && brandName.length < 50) {
-            name = brandName;
-            break;
-          }
-        }
-      }
-      if (name && name.length > 10) break; // Found a good brand name
-    }
-  }
-
-  // Extract contact email addresses (prioritize contact/info emails)
-  const emailPatterns = [
-    // Contact emails (highest priority)
-    /(?:contact|info|hello|support|enquir[yi]es?)@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi,
-    // General email pattern
-    /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
-  ];
-
-  for (const pattern of emailPatterns) {
-    const emailMatches = cleanText.match(pattern) || html.match(pattern);
-    if (emailMatches && emailMatches.length > 0) {
-      // Filter out non-contact emails
-      const validEmails = emailMatches.filter((emailAddr) => {
-        const lowerEmail = emailAddr.toLowerCase();
-        return (
-          !lowerEmail.includes("noreply") &&
-          !lowerEmail.includes("no-reply") &&
-          !lowerEmail.includes("donotreply") &&
-          !lowerEmail.includes("unsubscribe") &&
-          !lowerEmail.includes("bounce") &&
-          !lowerEmail.includes("mailer-daemon")
-        );
-      });
-
-      if (validEmails.length > 0) {
-        // Prioritize contact-type emails
-        const contactEmails = validEmails.filter((emailAddr) => {
-          const lowerEmail = emailAddr.toLowerCase();
-          return (
-            lowerEmail.includes("contact") ||
-            lowerEmail.includes("info") ||
-            lowerEmail.includes("hello") ||
-            lowerEmail.includes("support") ||
-            lowerEmail.includes("enquir")
-          );
-        });
-
-        email = contactEmails.length > 0 ? contactEmails[0] : validEmails[0];
-        break;
-      }
-    }
-  }
-
-  // Look for website links in the content
-  if (!website || website.includes(new URL(url).hostname)) {
-    const websitePatterns = [
-      // Direct website mentions
-      /(?:visit|website|site)\s*:?\s*(https?:\/\/[^\s<>"']+)/gi,
-      // Link elements with website-like text
-      /<a[^>]*href=["'](https?:\/\/[^"']+)["'][^>]*>(?:website|visit|home|official)/gi,
-    ];
-
-    for (const pattern of websitePatterns) {
-      const match = cleanText.match(pattern) || html.match(pattern);
-      if (match && match[1]) {
-        const foundWebsite = match[1].trim();
-        // Make sure it's not the same as the import URL
-        if (
-          foundWebsite !== url &&
-          !foundWebsite.includes("facebook") &&
-          !foundWebsite.includes("twitter")
-        ) {
-          website = foundWebsite;
-          break;
-        }
-      }
-    }
+  // Extract email
+  const emailPattern = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+  const emailMatch = cleanText.match(emailPattern);
+  if (emailMatch) {
+    email = emailMatch[0];
   }
 
   return { name, website, email };
 }
 
-// Helper function to extract first meaningful paragraph
 function extractFirstMeaningfulParagraph(cleanText: string): string | null {
-  const sentences = cleanText.split(/[.!?]+/);
+  // Split into paragraphs and sentences
+  const paragraphs = cleanText.split(/\n\s*\n/).filter(p => p.trim().length > 30);
+  const sentences = cleanText.split(/[.!?]+/).filter(s => s.trim().length > 20);
+  
+  // Keywords that indicate meaningful competition content
+  const competitionKeywords = [
+    'competition', 'contest', 'win', 'prize', 'enter', 'participate', 'submit',
+    'chance', 'opportunity', 'reward', 'winner', 'entry', 'promotion'
+  ];
+  
+  // Keywords that indicate navigation/header content to skip
+  const skipKeywords = [
+    'menu', 'navigation', 'skip to', 'home', 'about us', 'contact', 'login',
+    'register', 'search', 'categories', 'browse', 'footer', 'header', 'sidebar'
+  ];
 
-  for (const sentence of sentences) {
-    const trimmed = sentence.trim();
-    if (trimmed.length > 50 && trimmed.length < 300) {
-      // Skip sentences that are likely navigation or boilerplate
-      const lower = trimmed.toLowerCase();
-      if (
-        !lower.includes("cookie") &&
-        !lower.includes("privacy") &&
-        !lower.includes("navigation") &&
-        !lower.includes("menu") &&
-        !lower.includes("search") &&
-        !lower.includes("login")
-      ) {
-        return trimmed;
+  // Function to score content relevance
+  function scoreContent(text: string): number {
+    const lowerText = text.toLowerCase();
+    let score = 0;
+    
+    // Add points for competition keywords
+    competitionKeywords.forEach(keyword => {
+      if (lowerText.includes(keyword)) score += 2;
+    });
+    
+    // Subtract points for skip keywords
+    skipKeywords.forEach(keyword => {
+      if (lowerText.includes(keyword)) score -= 3;
+    });
+    
+    // Add points for length (longer content is often more meaningful)
+    if (text.length > 100) score += 1;
+    if (text.length > 200) score += 1;
+    
+    // Add points for sentence structure
+    if (text.includes('.') || text.includes('!') || text.includes('?')) score += 1;
+    
+    return score;
+  }
+
+  // Try paragraphs first
+  let bestContent = null;
+  let bestScore = -1;
+
+  for (const paragraph of paragraphs) {
+    const trimmed = paragraph.trim();
+    if (trimmed.length < 50) continue;
+    
+    const score = scoreContent(trimmed);
+    if (score > bestScore) {
+      bestScore = score;
+      bestContent = trimmed;
+    }
+  }
+
+  // If no good paragraph found, try sentences
+  if (!bestContent || bestScore < 2) {
+    for (const sentence of sentences) {
+      const trimmed = sentence.trim();
+      if (trimmed.length < 40) continue;
+      
+      const score = scoreContent(trimmed);
+      if (score > bestScore) {
+        bestScore = score;
+        bestContent = trimmed;
       }
+    }
+  }
+
+  // Clean up and return
+  if (bestContent) {
+    // Remove extra whitespace and limit length
+    bestContent = bestContent.replace(/\s+/g, ' ').trim();
+    if (bestContent.length > 500) {
+      bestContent = bestContent.substring(0, 500) + '...';
+    }
+    return bestContent;
+  }
+  
+  // Fallback to first substantial paragraph
+  return paragraphs[0]?.trim().substring(0, 500) || null;
+}
+
+function extractTermsAndConditionsUrl(html: string, baseUrl: string): string | null {
+  const termsPatterns = [
+    /<a[^>]*href=["']([^"']*(?:terms|conditions|rules)[^"']*)["'][^>]*>/gi,
+    /<a[^>]*href=["']([^"']*(?:legal|privacy)[^"']*)["'][^>]*>/gi,
+  ];
+
+  for (const pattern of termsPatterns) {
+    const match = pattern.exec(html);
+    if (match) {
+      const href = match[1];
+      return href.startsWith('http') ? href : new URL(href, baseUrl).href;
     }
   }
 
@@ -1545,23 +1270,16 @@ export async function createRequirementOption(
     };
   }
 
-  const name = formData.get("name") as string;
-  const description = formData.get("description") as string;
+  const requirementData = {
+    name: formData.get("name") as string,
+    description: formData.get("description") as string,
+    category: formData.get("category") as string,
+    is_active: formData.get("is_active") === "true",
+  };
 
-  if (!name?.trim()) {
-    return {
-      success: false,
-      message: "Requirement name is required",
-      error: "Name cannot be empty",
-    };
-  }
-
-  const { error } = await supabase.from("requirement_options").insert([
-    {
-      name: name.trim(),
-      description: description?.trim() || null,
-    },
-  ]);
+  const { error } = await supabase
+    .from("requirement_options")
+    .insert([requirementData]);
 
   if (error) {
     console.error("Error creating requirement option:", error);
@@ -1572,6 +1290,7 @@ export async function createRequirementOption(
     };
   }
 
+  revalidatePath("/admin");
   return {
     success: true,
     message: "Requirement option created successfully",

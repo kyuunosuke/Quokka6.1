@@ -463,7 +463,7 @@ export default async function CompetitionsPage() {
                               </div>
                               <Badge variant="outline" className="text-xs">
                                 {safeString(
-                                  competition?.difficulty_level,
+                                  competition?.type_of_game,
                                   "All Levels",
                                 )}
                               </Badge>

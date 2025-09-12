@@ -748,10 +748,10 @@ export default function Home() {
                         ? competition.category.trim()
                         : "Uncategorized",
                     difficulty:
-                      competition.difficulty_level &&
-                      typeof competition.difficulty_level === "string" &&
-                      competition.difficulty_level.trim()
-                        ? competition.difficulty_level.trim()
+                      competition.type_of_game &&
+                      typeof competition.type_of_game === "string" &&
+                      competition.type_of_game.trim()
+                        ? competition.type_of_game.trim()
                         : "Not specified",
                     organizer:
                       competition.organizer_name &&
@@ -773,11 +773,11 @@ export default function Home() {
                   return (
                     <FlipCard
                       key={`competition-${formattedCompetition.id}-${index}`}
-                      className={`w-full ${formattedCompetition.featured ? "h-[550px]" : "h-[500px]"}`}
+                      className="w-full h-[600px]" // Fixed height for all cards
                       frontContent={
-                        <Card className="bg-neuro-light shadow-neuro hover:shadow-neuro-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden w-full h-full">
+                        <Card className="bg-neuro-light shadow-neuro hover:shadow-neuro-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden w-full h-full flex flex-col">
                           {formattedCompetition.featured && (
-                            <CardHeader className="bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 text-white py-2 px-4">
+                            <CardHeader className="bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 text-white py-2 px-4 flex-shrink-0">
                               <div className="flex items-center justify-center gap-2">
                                 <Star className="w-5 h-5 fill-current" />
                                 <span className="font-bold text-sm">
@@ -787,7 +787,7 @@ export default function Home() {
                               </div>
                             </CardHeader>
                           )}
-                          <div className="relative">
+                          <div className="relative flex-shrink-0">
                             <img
                               src={formattedCompetition.thumbnail}
                               alt={formattedCompetition.title}
@@ -804,39 +804,41 @@ export default function Home() {
                             </div>
                           </div>
 
-                          <CardHeader>
-                            <CardTitle className="text-xl mb-2">
+                          <CardHeader className="flex-shrink-0">
+                            <CardTitle className="text-xl mb-2 line-clamp-2">
                               {formattedCompetition.title}
                             </CardTitle>
-                            <CardDescription className="text-gray-600">
+                            <CardDescription className="text-gray-600 line-clamp-3">
                               {formattedCompetition.description}
                             </CardDescription>
                           </CardHeader>
 
-                          <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between text-sm">
-                              <div className="flex items-center gap-1 text-green-600">
-                                <DollarSign className="w-4 h-4" />
-                                <span className="font-semibold">
-                                  {formattedCompetition.prize}
-                                </span>
+                          <CardContent className="flex-grow flex flex-col justify-between">
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-1 text-green-600">
+                                  <DollarSign className="w-4 h-4" />
+                                  <span className="font-semibold">
+                                    {formattedCompetition.prize}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1 text-orange-600">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>{formattedCompetition.deadline}</span>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1 text-orange-600">
-                                <Calendar className="w-4 h-4" />
-                                <span>{formattedCompetition.deadline}</span>
-                              </div>
-                            </div>
 
-                            <div className="flex items-center text-sm text-gray-600">
-                              <div className="flex items-center gap-1">
-                                <Users className="w-4 h-4" />
-                                <span>by {formattedCompetition.organizer}</span>
+                              <div className="flex items-center text-sm text-gray-600">
+                                <div className="flex items-center gap-1">
+                                  <Users className="w-4 h-4" />
+                                  <span>by {formattedCompetition.organizer}</span>
+                                </div>
                               </div>
                             </div>
                           </CardContent>
 
                           <CardFooter
-                            className="flex gap-2"
+                            className="flex gap-2 mt-auto flex-shrink-0"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Button

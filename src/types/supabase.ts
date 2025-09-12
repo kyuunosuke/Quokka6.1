@@ -421,7 +421,6 @@ export type Database = {
           current_participants: number | null
           description: string | null
           detailed_description: string | null
-          difficulty_level: string
           draw_date: string | null
           end_date: string
           entry_fee: number | null
@@ -438,6 +437,7 @@ export type Database = {
           organizer_name: string | null
           organizer_website: string | null
           participating_requirement: string | null
+          permit_number: string | null
           permits: string | null
           prize_amount: number | null
           prize_currency: string | null
@@ -453,6 +453,7 @@ export type Database = {
           thumbnail_url: string | null
           title: string
           total_prize: string | null
+          type_of_game: string
           updated_at: string | null
           winner_announcement_date: string | null
         }
@@ -463,7 +464,6 @@ export type Database = {
           current_participants?: number | null
           description?: string | null
           detailed_description?: string | null
-          difficulty_level?: string
           draw_date?: string | null
           end_date: string
           entry_fee?: number | null
@@ -480,6 +480,7 @@ export type Database = {
           organizer_name?: string | null
           organizer_website?: string | null
           participating_requirement?: string | null
+          permit_number?: string | null
           permits?: string | null
           prize_amount?: number | null
           prize_currency?: string | null
@@ -495,6 +496,7 @@ export type Database = {
           thumbnail_url?: string | null
           title: string
           total_prize?: string | null
+          type_of_game?: string
           updated_at?: string | null
           winner_announcement_date?: string | null
         }
@@ -505,7 +507,6 @@ export type Database = {
           current_participants?: number | null
           description?: string | null
           detailed_description?: string | null
-          difficulty_level?: string
           draw_date?: string | null
           end_date?: string
           entry_fee?: number | null
@@ -522,6 +523,7 @@ export type Database = {
           organizer_name?: string | null
           organizer_website?: string | null
           participating_requirement?: string | null
+          permit_number?: string | null
           permits?: string | null
           prize_amount?: number | null
           prize_currency?: string | null
@@ -537,6 +539,7 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string
           total_prize?: string | null
+          type_of_game?: string
           updated_at?: string | null
           winner_announcement_date?: string | null
         }
