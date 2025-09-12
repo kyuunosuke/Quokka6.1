@@ -748,10 +748,10 @@ export default function Home() {
                         ? competition.category.trim()
                         : "Uncategorized",
                     difficulty:
-                      competition.difficulty_level &&
-                      typeof competition.difficulty_level === "string" &&
-                      competition.difficulty_level.trim()
-                        ? competition.difficulty_level.trim()
+                      competition.type_of_game &&
+                      typeof competition.type_of_game === "string" &&
+                      competition.type_of_game.trim()
+                        ? competition.type_of_game.trim()
                         : "Not specified",
                     organizer:
                       competition.organizer_name &&
