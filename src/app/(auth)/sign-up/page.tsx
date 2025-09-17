@@ -3,7 +3,6 @@ import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { SmtpMessage } from "../smtp-message";
 import { signUpAction } from "@/app/actions";
 import Navbar from "@/components/navbar";
 import { UrlProvider } from "@/components/url-provider";
@@ -39,6 +38,13 @@ export default async function Signup(props: {
                   >
                     Sign in
                   </Link>
+                </p>
+              </div>
+
+              {/* Welcome message */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                <p className="text-sm text-blue-800 leading-relaxed">
+                  We're building something exciting for Quokkamole members. While the full experience isn't live just yet, for now, you can keep track of the competitions you've joined, and we'll let you know the moment new features launch.
                 </p>
               </div>
 
@@ -99,7 +105,6 @@ export default async function Signup(props: {
             </form>
           </UrlProvider>
         </div>
-        <SmtpMessage />
       </div>
     </>
   );
