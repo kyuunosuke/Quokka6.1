@@ -439,7 +439,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-neuro-light">
       <Navbar />
-
       {/* Competition Directory Section */}
       <section
         id="competitions"
@@ -510,7 +509,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Filters Section */}
       <section className="py-8 bg-white border-b">
         <div className="container mx-auto px-4">
@@ -557,7 +555,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Competitions Grid */}
       <section className="py-12 bg-neuro-light">
         <div className="container mx-auto px-4">
@@ -831,7 +828,9 @@ export default function Home() {
                               <div className="flex items-center text-sm text-gray-600">
                                 <div className="flex items-center gap-1">
                                   <Users className="w-4 h-4" />
-                                  <span>by {formattedCompetition.organizer}</span>
+                                  <span>
+                                    by {formattedCompetition.organizer}
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -971,7 +970,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Debug Section - Remove this after testing */}
       <section className="py-8 bg-gray-100 text-center">
         <div className="container mx-auto px-4">
@@ -981,7 +979,6 @@ export default function Home() {
           </p>
         </div>
       </section>
-
       {/* Load More Section */}
       {competitionsData.length === 0 ? (
         <section className="py-16 text-center bg-neuro-light">
@@ -1005,9 +1002,7 @@ export default function Home() {
           </Button>
         </section>
       )}
-
       <Hero />
-
       {/* Features Section */}
       <section className="py-24 bg-neuro-light">
         <div className="container mx-auto px-4">
@@ -1086,7 +1081,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* How It Works */}
       <section className="py-20 bg-neuro-light">
         <div className="container mx-auto px-4">
@@ -1134,14 +1128,12 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* CTA Section */}
       <section className="py-20 bg-gradient-to-br from-purple-600 to-blue-600 text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Start Competing?</h2>
+        <div className="container mx-auto px-4 text-center flex justify-center items-center flex-col">
+          <h2 className="text-3xl font-bold mb-4">Join us</h2>
           <p className="text-purple-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of creators who are already showcasing their talents
-            and winning amazing prizes.
+            We are in our early stage and we're building something exciting. Follow our journey.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
@@ -1160,7 +1152,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       <Footer />
     </div>
   );
