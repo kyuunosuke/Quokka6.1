@@ -511,12 +511,12 @@ export default function CompetitionForm({
 
               <div className="space-y-2">
                 <Label htmlFor="participating_requirement">
-                  Participating requirement
+                  Participating Requirement
                 </Label>
                 <Input
                   id="participating_requirement"
                   name="participating_requirement"
-                  defaultValue={competition?.rules || ""}
+                  defaultValue={competition?.participating_requirement || ""}
                   placeholder="Enter participating requirements"
                 />
               </div>
@@ -670,7 +670,7 @@ export default function CompetitionForm({
                 <Textarea
                   id="total_prize"
                   name="total_prize"
-                  defaultValue={competition?.prize_description || ""}
+                  defaultValue={competition?.total_prize || ""}
                   placeholder="Total prize details and description"
                   rows={3}
                 />
@@ -701,16 +701,6 @@ export default function CompetitionForm({
                   name="permits"
                   defaultValue={competition?.permits || ""}
                   placeholder="Required permits or licenses"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="permit_number">Permit Number</Label>
-                <Input
-                  id="permit_number"
-                  name="permit_number"
-                  defaultValue={competition?.permit_number || ""}
-                  placeholder="Permit number (if applicable)"
                 />
               </div>
 
