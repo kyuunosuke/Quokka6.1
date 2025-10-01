@@ -437,7 +437,6 @@ export type Database = {
           organizer_name: string | null
           organizer_website: string | null
           participating_requirement: string | null
-          permit_number: string | null
           permits: string | null
           prize_amount: number | null
           prize_currency: string | null
@@ -480,7 +479,6 @@ export type Database = {
           organizer_name?: string | null
           organizer_website?: string | null
           participating_requirement?: string | null
-          permit_number?: string | null
           permits?: string | null
           prize_amount?: number | null
           prize_currency?: string | null
@@ -523,7 +521,6 @@ export type Database = {
           organizer_name?: string | null
           organizer_website?: string | null
           participating_requirement?: string | null
-          permit_number?: string | null
           permits?: string | null
           prize_amount?: number | null
           prize_currency?: string | null
