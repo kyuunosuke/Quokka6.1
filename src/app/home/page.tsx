@@ -434,10 +434,7 @@ export default async function CompetitionsHome() {
                               <div className="flex items-center gap-1 text-green-600">
                                 <DollarSign className="w-4 h-4" />
                                 <span className="font-semibold">
-                                  {formatPrize(
-                                    competition?.prize_amount,
-                                    competition?.prize_currency,
-                                  )}
+                                  {formatPrize(competition?.total_prize)}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1 text-orange-600">
