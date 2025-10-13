@@ -72,9 +72,9 @@ export default async function CompetitionPage({
   };
 
   // Format prize
-  const formatPrize = (amount: number, currency: string) => {
-    if (!amount) return "Prize TBD";
-    return `${currency || "$"}${amount.toLocaleString()}`;
+  const formatPrize = (totalPrize: string | null) => {
+    if (!totalPrize || totalPrize.trim().length === 0) return "Prize TBD";
+    return totalPrize.trim();
   };
 
   // Get status color
@@ -190,21 +190,8 @@ export default async function CompetitionPage({
                 <div className="prose max-w-none">
                   <p className="text-muted-foreground leading-relaxed">
                     {competition.description ||
-                      competition.detailed_description ||
                       "No description available for this competition."}
                   </p>
-                  {competition.detailed_description &&
-                    competition.description !==
-                      competition.detailed_description && (
-                      <div className="mt-4 pt-4 border-t">
-                        <h4 className="font-semibold mb-2">
-                          Additional Details
-                        </h4>
-                        <p className="text-muted-foreground leading-relaxed">
-                          {competition.detailed_description}
-                        </p>
-                      </div>
-                    )}
                 </div>
               </CardContent>
             </Card>
@@ -284,10 +271,7 @@ export default async function CompetitionPage({
                   <DollarSign className="h-5 w-5 text-green-600" />
                   <div>
                     <p className="font-semibold">
-                      {formatPrize(
-                        competition.prize_amount,
-                        competition.prize_currency,
-                      )}
+                      {formatPrize(competition.total_prize)}
                     </p>
                     <p className="text-sm text-muted-foreground">Total Prize</p>
                   </div>

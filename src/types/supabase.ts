@@ -170,6 +170,39 @@ export type Database = {
         }
         Relationships: []
       }
+      clients: {
+        Row: {
+          client_name: string
+          created_at: string | null
+          email_address: string
+          id: string
+          person_in_charge: string | null
+          phone_number: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          client_name: string
+          created_at?: string | null
+          email_address: string
+          id?: string
+          person_in_charge?: string | null
+          phone_number?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          client_name?: string
+          created_at?: string | null
+          email_address?: string
+          id?: string
+          person_in_charge?: string | null
+          phone_number?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       competition_categories: {
         Row: {
           color_scheme: string | null
@@ -417,29 +450,24 @@ export type Database = {
         Row: {
           banner_url: string | null
           category: string
+          client_id: string | null
           created_at: string | null
           current_participants: number | null
           description: string | null
-          detailed_description: string | null
           draw_date: string | null
           end_date: string
-          entry_fee: number | null
+          entry_criteria: string[] | null
           featured: boolean | null
           id: string
-          is_team_competition: boolean | null
           judging_end_date: string | null
           judging_start_date: string | null
           max_participants: number | null
-          max_team_size: number | null
-          min_team_size: number | null
           organizer_email: string | null
           organizer_id: string | null
           organizer_name: string | null
           organizer_website: string | null
           participating_requirement: string | null
           permits: string | null
-          prize_amount: number | null
-          prize_currency: string | null
           prize_description: string | null
           region: string | null
           rules: string | null
@@ -459,29 +487,24 @@ export type Database = {
         Insert: {
           banner_url?: string | null
           category: string
+          client_id?: string | null
           created_at?: string | null
           current_participants?: number | null
           description?: string | null
-          detailed_description?: string | null
           draw_date?: string | null
           end_date: string
-          entry_fee?: number | null
+          entry_criteria?: string[] | null
           featured?: boolean | null
           id?: string
-          is_team_competition?: boolean | null
           judging_end_date?: string | null
           judging_start_date?: string | null
           max_participants?: number | null
-          max_team_size?: number | null
-          min_team_size?: number | null
           organizer_email?: string | null
           organizer_id?: string | null
           organizer_name?: string | null
           organizer_website?: string | null
           participating_requirement?: string | null
           permits?: string | null
-          prize_amount?: number | null
-          prize_currency?: string | null
           prize_description?: string | null
           region?: string | null
           rules?: string | null
@@ -501,29 +524,24 @@ export type Database = {
         Update: {
           banner_url?: string | null
           category?: string
+          client_id?: string | null
           created_at?: string | null
           current_participants?: number | null
           description?: string | null
-          detailed_description?: string | null
           draw_date?: string | null
           end_date?: string
-          entry_fee?: number | null
+          entry_criteria?: string[] | null
           featured?: boolean | null
           id?: string
-          is_team_competition?: boolean | null
           judging_end_date?: string | null
           judging_start_date?: string | null
           max_participants?: number | null
-          max_team_size?: number | null
-          min_team_size?: number | null
           organizer_email?: string | null
           organizer_id?: string | null
           organizer_name?: string | null
           organizer_website?: string | null
           participating_requirement?: string | null
           permits?: string | null
-          prize_amount?: number | null
-          prize_currency?: string | null
           prize_description?: string | null
           region?: string | null
           rules?: string | null
@@ -541,6 +559,13 @@ export type Database = {
           winner_announcement_date?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "competitions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "competitions_organizer_id_fkey"
             columns: ["organizer_id"]

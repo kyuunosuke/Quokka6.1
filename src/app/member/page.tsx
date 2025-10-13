@@ -82,8 +82,7 @@ export default function MemberDashboard() {
               status,
               start_date,
               end_date,
-              prize_amount,
-              prize_currency,
+              total_prize,
               thumbnail_url
             )
           `,
@@ -124,8 +123,7 @@ export default function MemberDashboard() {
               status,
               start_date,
               end_date,
-              prize_amount,
-              prize_currency,
+              total_prize,
               thumbnail_url
             )
           `,

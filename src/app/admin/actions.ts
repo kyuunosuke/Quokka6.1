@@ -5,11 +5,59 @@ import { encodedRedirect } from "@/utils/utils";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-type ActionResult = {
+export interface ActionResult {
   success: boolean;
   message: string;
   error?: string;
-};
+  data?: any;
+}
+
+export async function createNewClient(
+  formData: FormData,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      success: false,
+      message: "Authentication required",
+      error: "User not authenticated",
+    };
+  }
+
+  const clientData = {
+    client_name: formData.get("client_name") as string,
+    email_address: formData.get("email_address") as string,
+    website: formData.get("website") as string,
+    phone_number: formData.get("phone_number") as string,
+    person_in_charge: formData.get("person_in_charge") as string,
+  };
+
+  const { data, error } = await supabase
+    .from("clients")
+    .insert([clientData])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating client:", error);
+    return {
+      success: false,
+      message: "Failed to create client",
+      error: error.message || "Unknown database error",
+    };
+  }
+
+  revalidatePath("/admin");
+  return {
+    success: true,
+    message: "Client created successfully",
+    data,
+  };
+}
 
 export async function createCompetition(
   formData: FormData,
@@ -50,6 +98,14 @@ export async function createCompetition(
     return dateString;
   };
 
+  // Helper function to handle optional date fields
+  const formatOptionalDate = (dateString: string | null): string | null => {
+    if (!dateString || dateString.trim() === "") {
+      return null;
+    }
+    return dateString;
+  };
+
   // Helper function to handle numeric fields
   const parseNumber = (value: string | null): number | null => {
     if (!value || value.trim() === "") return null;
@@ -57,23 +113,34 @@ export async function createCompetition(
     return isNaN(parsed) ? null : parsed;
   };
 
+  // Get entry criteria checkboxes
+  const entryCriteria = formData.getAll("entry_criteria") as string[];
+
   // Map form data to actual database columns with proper null handling
   const competitionData = {
     title: formData.get("title") as string,
     description: formData.get("description") as string,
-    detailed_description: formData.get("detailed_description") as string,
     category: formData.get("category") as string,
+    subcategory: formData.get("subcategory") as string,
     type_of_game: formData.get("type_of_game") as string,
     start_date: formatDate(formData.get("start_date") as string),
     end_date: formatDate(formData.get("end_date") as string),
-    submission_deadline: formatDate(formData.get("draw_date") as string), // Always provide a value
+    submission_deadline: formatDate(formData.get("submission_deadline") as string),
+    draw_date: formatOptionalDate(formData.get("draw_date") as string),
     prize_description: formData.get("prize_description") as string,
-    prize_amount: parseNumber(formData.get("total_prize") as string),
-    prize_currency: "AUD",
+    total_prize: formData.get("total_prize") as string,
     thumbnail_url: formData.get("thumbnail_url") as string,
-    organizer_name: formData.get("organiser_name") as string,
-    organizer_website: formData.get("organiser_website") as string,
-    organizer_email: formData.get("organiser_email") as string,
+    banner_url: formData.get("banner_url") as string,
+    client_id: formData.get("client_id") ? (formData.get("client_id") as string) : null,
+    participating_requirement: formData.get("participating_requirement") as string,
+    rules: formData.get("rules") as string,
+    permits: formData.get("permits") as string,
+    region: formData.get("region") as string,
+    entry_criteria: entryCriteria.length > 0 ? entryCriteria : null,
+    organizer_name: formData.get("organizer_name") as string,
+    organizer_email: formData.get("organizer_email") as string,
+    organizer_website: formData.get("organizer_website") as string,
+    terms_conditions_url: formData.get("terms_conditions_url") as string,
     status: "draft",
     organizer_id: user.id,
   };
@@ -138,6 +205,14 @@ export async function updateCompetition(
     return dateString;
   };
 
+  // Helper function to handle optional date fields
+  const formatOptionalDate = (dateString: string | null): string | null => {
+    if (!dateString || dateString.trim() === "") {
+      return null;
+    }
+    return dateString;
+  };
+
   // Helper function to handle numeric fields
   const parseNumber = (value: string | null): number | null => {
     if (!value || value.trim() === "") return null;
@@ -145,24 +220,35 @@ export async function updateCompetition(
     return isNaN(parsed) ? null : parsed;
   };
 
+  // Get entry criteria checkboxes
+  const entryCriteria = formData.getAll("entry_criteria") as string[];
+
   // Map form data to actual database columns with proper null handling
   const competitionData = {
     title: formData.get("title") as string,
     description: formData.get("description") as string,
-    detailed_description: formData.get("detailed_description") as string,
     category: formData.get("category") as string,
+    subcategory: formData.get("subcategory") as string,
     type_of_game: formData.get("type_of_game") as string,
     start_date: formatDate(formData.get("start_date") as string),
     end_date: formatDate(formData.get("end_date") as string),
-    submission_deadline: formatDate(formData.get("draw_date") as string), // Always provide a value
+    submission_deadline: formatDate(formData.get("submission_deadline") as string),
+    draw_date: formatOptionalDate(formData.get("draw_date") as string),
     prize_description: formData.get("prize_description") as string,
-    prize_amount: parseNumber(formData.get("total_prize") as string),
-    prize_currency: "AUD",
+    total_prize: formData.get("total_prize") as string,
     thumbnail_url: formData.get("thumbnail_url") as string,
-    organizer_name: formData.get("organiser_name") as string,
-    organizer_website: formData.get("organiser_website") as string,
-    organizer_email: formData.get("organiser_email") as string,
-    status: formData.get("status") as string, // Include status field
+    banner_url: formData.get("banner_url") as string,
+    client_id: formData.get("client_id") ? (formData.get("client_id") as string) : null,
+    participating_requirement: formData.get("participating_requirement") as string,
+    rules: formData.get("rules") as string,
+    permits: formData.get("permits") as string,
+    region: formData.get("region") as string,
+    entry_criteria: entryCriteria.length > 0 ? entryCriteria : null,
+    organizer_name: formData.get("organizer_name") as string,
+    organizer_email: formData.get("organizer_email") as string,
+    organizer_website: formData.get("organizer_website") as string,
+    terms_conditions_url: formData.get("terms_conditions_url") as string,
+    status: formData.get("status") as string,
     updated_at: new Date().toISOString(),
   };
 
