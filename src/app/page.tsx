@@ -693,12 +693,7 @@ export default function Home() {
                       typeof competition.description === "string" &&
                       competition.description.trim()
                         ? competition.description.trim()
-                        : competition.detailed_description &&
-                            typeof competition.detailed_description ===
-                              "string" &&
-                            competition.detailed_description.trim()
-                          ? competition.detailed_description.trim()
-                          : "No description available",
+                        : "No description available",
                     thumbnail:
                       competition.thumbnail_url &&
                       typeof competition.thumbnail_url === "string" &&

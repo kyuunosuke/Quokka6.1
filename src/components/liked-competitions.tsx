@@ -75,9 +75,9 @@ export default function LikedCompetitions({
     });
   };
 
-  const formatPrize = (amount: number, currency: string) => {
-    if (!amount) return "No prize specified";
-    return `${currency || "$"}${amount.toLocaleString()}`;
+  const formatPrize = (totalPrize: string | null) => {
+    if (!totalPrize || totalPrize.trim().length === 0) return "No prize specified";
+    return totalPrize.trim();
   };
 
   if (competitions.length === 0) {
@@ -173,14 +173,11 @@ export default function LikedCompetitions({
                     <span>Ends: {formatDate(competition.end_date)}</span>
                   </div>
 
-                  {competition.prize_amount && (
+                  {competition.total_prize && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <DollarSign className="h-4 w-4" />
                       <span>
-                        {formatPrize(
-                          competition.prize_amount,
-                          competition.prize_currency,
-                        )}
+                        {formatPrize(competition.total_prize)}
                       </span>
                     </div>
                   )}

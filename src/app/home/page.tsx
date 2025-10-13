@@ -27,11 +27,10 @@ import { Tables } from "@/types/supabase";
 type Competition = Tables<"competitions">;
 
 // Helper function to format prize amount
-function formatPrize(amount: number | null, currency: string | null): string {
-  if (!amount || amount <= 0) return "TBD";
+function formatPrize(totalPrize: string | null): string {
+  if (!totalPrize || totalPrize.trim().length === 0) return "TBD";
   try {
-    const currencySymbol = currency === "USD" ? "$" : currency || "$";
-    return `${currencySymbol}${amount.toLocaleString()}`;
+    return totalPrize.trim();
   } catch {
     return "TBD";
   }
@@ -197,18 +196,19 @@ export default async function CompetitionsHome() {
     })),
   ];
 
-  // Calculate total prize money
+  // Calculate total prize money - now just show count since total_prize is text
   const totalPrizes = Array.isArray(competitions)
-    ? competitions.reduce((sum, comp) => {
+    ? competitions.filter((comp) => {
         try {
           if (comp && typeof comp === "object") {
-            return sum + safeNumber(comp.prize_amount, 0);
+            const prize = safeString(comp.total_prize);
+            return prize && prize !== "TBD" && prize.length > 0;
           }
-          return sum;
+          return false;
         } catch {
-          return sum;
+          return false;
         }
-      }, 0)
+      }).length
     : 0;
 
   // Calculate total participants
@@ -251,9 +251,7 @@ export default async function CompetitionsHome() {
               </div>
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                 <div className="text-2xl font-bold">
-                  {totalPrizes > 0
-                    ? `${(totalPrizes / 1000).toFixed(0)}K+`
-                    : "TBD"}
+                  {totalPrizes > 0 ? `${totalPrizes}+` : "TBD"}
                 </div>
                 <div className="text-sm text-purple-100">Total Prizes</div>
               </div>
