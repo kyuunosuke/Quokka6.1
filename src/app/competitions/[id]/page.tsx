@@ -190,21 +190,8 @@ export default async function CompetitionPage({
                 <div className="prose max-w-none">
                   <p className="text-muted-foreground leading-relaxed">
                     {competition.description ||
-                      competition.detailed_description ||
                       "No description available for this competition."}
                   </p>
-                  {competition.detailed_description &&
-                    competition.description !==
-                      competition.detailed_description && (
-                      <div className="mt-4 pt-4 border-t">
-                        <h4 className="font-semibold mb-2">
-                          Additional Details
-                        </h4>
-                        <p className="text-muted-foreground leading-relaxed">
-                          {competition.detailed_description}
-                        </p>
-                      </div>
-                    )}
                 </div>
               </CardContent>
             </Card>

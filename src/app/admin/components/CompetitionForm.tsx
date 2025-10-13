@@ -17,10 +17,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { createClient as createSupabaseClient } from "@/lib/supabase";
+import { createNewClient } from "@/app/admin/actions";
 import {
   createCompetition,
   updateCompetition,
@@ -29,7 +33,6 @@ import {
 } from "../actions";
 import { Tables } from "@/types/supabase";
 import { useToast } from "@/components/ui/use-toast";
-import { createClient } from "../../../../supabase/client";
 import { Plus, Download, AlertCircle } from "lucide-react";
 
 type Competition = Tables<"competitions">;
@@ -73,6 +76,12 @@ export default function CompetitionForm({
   const [importedData, setImportedData] = useState<any>(null);
   const [importIssues, setImportIssues] = useState<string[]>([]);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [clients, setClients] = useState<any[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>(
+    competition?.client_id || ""
+  );
+  const [isAddClientOpen, setIsAddClientOpen] = useState(false);
+  const [isAddingClient, setIsAddingClient] = useState(false);
 
   // Initialize with a function to avoid calling getCurrentDateWithMidnight during render
   const [endDate, setEndDate] = useState(() => {
@@ -97,7 +106,7 @@ export default function CompetitionForm({
     useState(false);
   const isEditing = !!competition;
   const { toast } = useToast();
-  const supabase = createClient();
+  const supabase = createSupabaseClient();
 
   // Load requirement options and selected requirements
   useEffect(() => {
@@ -128,6 +137,47 @@ export default function CompetitionForm({
 
     loadRequirements();
   }, [competition?.id, supabase]);
+
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  async function loadClients() {
+    const supabase = createSupabaseClient();
+    const { data, error } = await supabase
+      .from("clients")
+      .select("*")
+      .order("client_name");
+
+    if (!error && data) {
+      setClients(data);
+    }
+  }
+
+  async function handleAddClient(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    setIsAddingClient(true);
+    const result = await createNewClient(formData);
+    setIsAddingClient(false);
+
+    if (result.success && result.data) {
+      await loadClients();
+      setSelectedClientId(result.data.id);
+      setIsAddClientOpen(false);
+      toast({
+        title: "Success",
+        description: "Client added successfully",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: result.message,
+        variant: "destructive",
+      });
+    }
+  }
 
   // Update submission deadline when end date changes (unless manually modified)
   useEffect(() => {
@@ -474,8 +524,7 @@ export default function CompetitionForm({
                       name="entry_criteria"
                       value="18+"
                       defaultChecked={
-                        competition?.detailed_description?.includes("18+") ||
-                        false
+                        competition?.entry_criteria?.includes("18+") || false
                       }
                     />
                     <Label htmlFor="criteria_18_plus">18+</Label>
@@ -486,9 +535,8 @@ export default function CompetitionForm({
                       name="entry_criteria"
                       value="AU Residents"
                       defaultChecked={
-                        competition?.detailed_description?.includes(
-                          "AU Residents",
-                        ) || false
+                        competition?.entry_criteria?.includes("AU Residents") ||
+                        false
                       }
                     />
                     <Label htmlFor="criteria_au_residents">AU Residents</Label>
@@ -499,9 +547,8 @@ export default function CompetitionForm({
                       name="entry_criteria"
                       value="Members only"
                       defaultChecked={
-                        competition?.detailed_description?.includes(
-                          "Members only",
-                        ) || false
+                        competition?.entry_criteria?.includes("Members only") ||
+                        false
                       }
                     />
                     <Label htmlFor="criteria_members_only">Members only</Label>
@@ -759,6 +806,104 @@ export default function CompetitionForm({
                 defaultValue={competition?.terms_conditions_url || ""}
                 placeholder="https://example.com/terms"
               />
+            </div>
+          </div>
+
+          {/* Client Selection */}
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="client_id">Client</Label>
+            <div className="flex gap-2">
+              <Select
+                name="client_id"
+                value={selectedClientId}
+                onValueChange={setSelectedClientId}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select a client (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.client_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Dialog open={isAddClientOpen} onOpenChange={setIsAddClientOpen}>
+                <DialogTrigger asChild>
+                  <Button type="button" variant="outline">
+                    Add New Client
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add New Client</DialogTitle>
+                    <DialogDescription>
+                      Enter the client information below.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleAddClient} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="client_name">Client Name *</Label>
+                      <Input
+                        id="client_name"
+                        name="client_name"
+                        required
+                        disabled={isAddingClient}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email_address">Email Address *</Label>
+                      <Input
+                        id="email_address"
+                        name="email_address"
+                        type="email"
+                        required
+                        disabled={isAddingClient}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="website">Website</Label>
+                      <Input
+                        id="website"
+                        name="website"
+                        type="url"
+                        disabled={isAddingClient}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone_number">Phone Number</Label>
+                      <Input
+                        id="phone_number"
+                        name="phone_number"
+                        disabled={isAddingClient}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="person_in_charge">Person in Charge</Label>
+                      <Input
+                        id="person_in_charge"
+                        name="person_in_charge"
+                        disabled={isAddingClient}
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsAddClientOpen(false)}
+                        disabled={isAddingClient}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={isAddingClient}>
+                        {isAddingClient ? "Adding..." : "Add Client"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 

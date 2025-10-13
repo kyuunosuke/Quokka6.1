@@ -57,7 +57,7 @@ function formatDate(dateString: string | null): string {
 function getRequirementsText(competition: Competition): string {
   try {
     return (
-      competition?.detailed_description?.trim() ||
+      competition?.participating_requirement?.trim() ||
       competition?.description?.trim() ||
       "No specific requirements listed."
     );

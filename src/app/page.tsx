@@ -467,20 +467,7 @@ export default function Home() {
               </div>
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                 <div className="text-2xl font-bold">
-                  $
-                  {competitionsData
-                    .reduce((sum, comp) => {
-                      try {
-                        const amount =
-                          comp && typeof comp.prize_amount === "number"
-                            ? comp.prize_amount
-                            : 0;
-                        return sum + amount;
-                      } catch {
-                        return sum;
-                      }
-                    }, 0)
-                    .toLocaleString()}
+                  {competitionsData.length > 0 ? "Various" : "TBD"}
                 </div>
                 <div className="text-sm text-purple-100">Total Prizes</div>
               </div>
@@ -723,10 +710,10 @@ export default function Home() {
                           ? competition.banner_url.trim()
                           : "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&q=80",
                     prize:
-                      competition.prize_amount &&
-                      typeof competition.prize_amount === "number" &&
-                      !isNaN(competition.prize_amount)
-                        ? `${competition.prize_amount.toLocaleString()}`
+                      competition.total_prize &&
+                      typeof competition.total_prize === "string" &&
+                      competition.total_prize.trim()
+                        ? competition.total_prize.trim()
                         : "TBD",
                     prizeDescription:
                       competition.prize_description &&
