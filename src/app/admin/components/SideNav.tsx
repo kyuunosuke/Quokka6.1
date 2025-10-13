@@ -137,7 +137,7 @@ export default function SideNav({ onFilterChange, activeTab }: SideNavProps) {
                   <SelectItem value="title">Title</SelectItem>
                   <SelectItem value="start_date">Start Date</SelectItem>
                   <SelectItem value="end_date">End Date</SelectItem>
-                  <SelectItem value="prize_amount">Prize Amount</SelectItem>
+                  <SelectItem value="total_prize">Prize Amount</SelectItem>
                   <SelectItem value="current_participants">
                     Participants
                   </SelectItem>

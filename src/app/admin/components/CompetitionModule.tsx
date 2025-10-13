@@ -137,12 +137,9 @@ export default function CompetitionModule({ filters }: CompetitionModuleProps) {
     });
   };
 
-  const formatCurrency = (amount: number | null, currency: string | null) => {
-    if (!amount) return "Free";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency || "USD",
-    }).format(amount);
+  const formatCurrency = (prizeString: string | null) => {
+    if (!prizeString) return "Free";
+    return prizeString;
   };
 
   const handleArchive = async (competitionId: string) => {
@@ -268,10 +265,7 @@ export default function CompetitionModule({ filters }: CompetitionModuleProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              $
-              {competitions
-                .reduce((sum, c) => sum + (c.prize_amount || 0), 0)
-                .toLocaleString()}
+              {competitions.filter(c => c.total_prize).length} competitions with prizes
             </div>
           </CardContent>
         </Card>
@@ -318,10 +312,7 @@ export default function CompetitionModule({ filters }: CompetitionModuleProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {formatCurrency(
-                        competition.prize_amount,
-                        competition.prize_currency,
-                      )}
+                      {formatCurrency(competition.total_prize)}
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
