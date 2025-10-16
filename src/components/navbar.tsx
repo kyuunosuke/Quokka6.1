@@ -36,6 +36,10 @@ export default function Navbar() {
           />
         </Link>
 
+        <div className="absolute left-1/2 transform -translate-x-1/2">
+          <h1 className="text-2xl font-bold text-gray-900">Quokkamole.com</h1>
+        </div>
+
         <div className="flex gap-4 items-center">
           {user ? (
             <>
