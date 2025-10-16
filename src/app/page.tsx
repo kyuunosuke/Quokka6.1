@@ -88,37 +88,69 @@ function ExpandableText({
 function CompetitionDetailsCard({
   requirements,
   rules,
+  entryCriteria,
 }: {
   requirements: string[];
   rules: string;
+  entryCriteria: string;
 }) {
+  // Debug log
+  console.log('CompetitionDetailsCard received:', { 
+    requirementsCount: requirements.length, 
+    rulesLength: rules?.length || 0, 
+    entryCriteriaLength: entryCriteria?.length || 0,
+    entryCriteria 
+  });
+
   return (
     <Card className="bg-neuro-light shadow-neuro overflow-hidden w-full h-full">
       <CardContent className="p-6 space-y-6 h-full overflow-y-auto">
         {/* Requirements Section */}
-        <div>
-          <h4 className="font-semibold text-lg mb-4 text-purple-600 flex items-center gap-2">
-            <Target className="w-5 h-5" />
-            Requirements
-          </h4>
-          <div className="space-y-3">
-            {requirements.map((requirement, index) => (
-              <div key={index} className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-purple-600 rounded-full mt-2 flex-shrink-0" />
-                <ExpandableText text={requirement} maxLength={100} />
-              </div>
-            ))}
+        {requirements.length > 0 && (
+          <div>
+            <h4 className="font-semibold text-lg mb-4 text-purple-600 flex items-center gap-2">
+              <Target className="w-5 h-5" />
+              Participating Requirements
+            </h4>
+            <div className="space-y-3">
+              {requirements.map((requirement, index) => (
+                <div key={index} className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-purple-600 rounded-full mt-2 flex-shrink-0" />
+                  <ExpandableText text={requirement} maxLength={100} />
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Rules Section */}
-        <div className="border-t pt-6">
-          <h4 className="font-semibold text-lg mb-4 text-blue-600 flex items-center gap-2">
-            <Trophy className="w-5 h-5" />
-            Rules
-          </h4>
-          <ExpandableText text={rules} maxLength={200} />
-        </div>
+        {rules && rules.length > 0 && (
+          <div className={requirements.length > 0 ? "border-t pt-6" : ""}>
+            <h4 className="font-semibold text-lg mb-4 text-blue-600 flex items-center gap-2">
+              <Trophy className="w-5 h-5" />
+              Rules
+            </h4>
+            <ExpandableText text={rules} maxLength={200} />
+          </div>
+        )}
+
+        {/* Entry Criteria Section */}
+        {entryCriteria && entryCriteria.length > 0 && (
+          <div className={(requirements.length > 0 || (rules && rules.length > 0)) ? "border-t pt-6" : ""}>
+            <h4 className="font-semibold text-lg mb-4 text-green-600 flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Entry Criteria
+            </h4>
+            <ExpandableText text={entryCriteria} maxLength={200} />
+          </div>
+        )}
+
+        {/* Empty state */}
+        {requirements.length === 0 && (!rules || rules.length === 0) && (!entryCriteria || entryCriteria.length === 0) && (
+          <div className="text-center py-8 text-gray-500">
+            <p>Details will be provided upon registration.</p>
+          </div>
+        )}
       </CardContent>
 
       <CardFooter className="flex gap-2 p-4 border-t bg-white/50">
@@ -261,7 +293,7 @@ export default function Home() {
         console.log("Fetching competitions...");
         const competitionsResult = await supabase
           .from("competitions")
-          .select("*")
+          .select("*, entry_criteria")
           .eq("status", "active")
           .order("created_at", { ascending: false });
 
@@ -448,11 +480,10 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-4xl sm:text-5xl font-bold mb-6">
-              Active Competitions
+              Discover Australia's Best Competitions in One Place
             </h2>
             <p className="text-xl text-purple-100 mb-8">
-              Discover amazing competitions, showcase your talents, and win
-              incredible prizes
+              Connect, play, and compete with ease. Your hub for the latest online competitions
             </p>
 
             {/* Quick Stats */}
@@ -596,51 +627,30 @@ export default function Home() {
                     }
                   };
 
-                  // Safe requirements formatting from requirement_options table - each as single sentence
-                  const formatRequirements = (requirementsSelected: any) => {
+                  // Safe requirements formatting from participating_requirement field
+                  const formatRequirements = (participatingRequirement: any) => {
                     try {
                       if (
-                        !requirementsSelected ||
-                        requirementsSelected === null ||
-                        requirementsSelected === undefined ||
-                        !Array.isArray(requirementsSelected) ||
-                        requirementsSelected.length === 0
+                        !participatingRequirement ||
+                        participatingRequirement === null ||
+                        participatingRequirement === undefined ||
+                        typeof participatingRequirement !== "string" ||
+                        participatingRequirement.trim().length === 0
                       ) {
-                        return [
-                          "Requirements will be provided upon registration.",
-                        ];
+                        return [];
                       }
 
-                      const validRequirements = requirementsSelected
-                        .filter(
-                          (req) =>
-                            req &&
-                            typeof req === "object" &&
-                            req !== null &&
-                            req.requirement_options &&
-                            typeof req.requirement_options === "object",
-                        )
-                        .map((req) => {
-                          try {
-                            const option = req.requirement_options;
-                            let text = option.description || option.name || "";
-                            // Ensure single sentence - remove extra periods and add one at the end
-                            text = text.trim().replace(/\.+$/, "") + ".";
-                            return text;
-                          } catch {
-                            return "";
-                          }
-                        })
-                        .filter(
-                          (desc) =>
-                            desc &&
-                            typeof desc === "string" &&
-                            desc.trim().length > 0,
-                        );
+                      // Split by newlines or periods to create list items
+                      const requirements = participatingRequirement
+                        .split(/\n|\./)
+                        .map((req: string) => req.trim())
+                        .filter((req: string) => req.length > 0)
+                        .map((req: string) => {
+                          // Ensure single sentence - add period if not present
+                          return req.endsWith(".") ? req : req + ".";
+                        });
 
-                      return validRequirements.length > 0
-                        ? validRequirements
-                        : ["Requirements will be provided upon registration."];
+                      return requirements.length > 0 ? requirements : [];
                     } catch (error) {
                       console.warn(
                         "Error formatting requirements for competition",
@@ -648,9 +658,7 @@ export default function Home() {
                         ":",
                         error,
                       );
-                      return [
-                        "Requirements will be provided upon registration.",
-                      ];
+                      return [];
                     }
                   };
 
@@ -664,7 +672,7 @@ export default function Home() {
                         typeof rulesText !== "string" ||
                         rulesText.trim().length === 0
                       ) {
-                        return "Rules will be provided upon registration.";
+                        return "";
                       }
 
                       return rulesText.trim();
@@ -675,7 +683,32 @@ export default function Home() {
                         ":",
                         error,
                       );
-                      return "Rules will be provided upon registration.";
+                      return "";
+                    }
+                  };
+
+                  // Safe entry criteria formatting from competitions.entry_criteria field
+                  const formatEntryCriteria = (entryCriteriaText: any) => {
+                    try {
+                      if (
+                        !entryCriteriaText ||
+                        entryCriteriaText === null ||
+                        entryCriteriaText === undefined ||
+                        typeof entryCriteriaText !== "string" ||
+                        entryCriteriaText.trim().length === 0
+                      ) {
+                        return "";
+                      }
+
+                      return entryCriteriaText.trim();
+                    } catch (error) {
+                      console.warn(
+                        "Error formatting entry criteria for competition",
+                        competition.id,
+                        ":",
+                        error,
+                      );
+                      return "";
                     }
                   };
 
@@ -746,11 +779,17 @@ export default function Home() {
                           ? competition.organizer.trim()
                           : "Unknown Organizer",
                     requirements: formatRequirements(
-                      competition.competition_requirements_selected,
+                      competition.participating_requirement,
                     ),
                     rules: formatRules(competition.rules),
+                    entryCriteria: formatEntryCriteria(competition.entry_criteria),
                     featured: competition.featured === true,
                   };
+
+                  // Debug log to verify entry_criteria is being captured
+                  if (competition.entry_criteria) {
+                    console.log('Competition', competition.id, 'has entry_criteria:', competition.entry_criteria);
+                  }
 
                   return (
                     <FlipCard
@@ -798,15 +837,21 @@ export default function Home() {
                           <CardContent className="flex-grow flex flex-col justify-between">
                             <div className="space-y-4">
                               <div className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-1 text-green-600">
-                                  <DollarSign className="w-4 h-4" />
-                                  <span className="font-semibold">
-                                    {formattedCompetition.prize}
-                                  </span>
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-xs text-gray-500 font-medium">Total Prize</span>
+                                  <div className="flex items-center gap-1 text-green-600">
+                                    <DollarSign className="w-4 h-4" />
+                                    <span className="font-semibold">
+                                      {formattedCompetition.prize}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-1 text-orange-600">
-                                  <Calendar className="w-4 h-4" />
-                                  <span>{formattedCompetition.deadline}</span>
+                                <div className="flex flex-col gap-1 items-end">
+                                  <span className="text-xs text-gray-500 font-medium">End Date</span>
+                                  <div className="flex items-center gap-1 text-orange-600">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>{formattedCompetition.deadline}</span>
+                                  </div>
                                 </div>
                               </div>
 
@@ -934,6 +979,7 @@ export default function Home() {
                         <CompetitionDetailsCard
                           requirements={formattedCompetition.requirements}
                           rules={formattedCompetition.rules}
+                          entryCriteria={formattedCompetition.entryCriteria}
                         />
                       }
                     />
