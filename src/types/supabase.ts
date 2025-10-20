@@ -799,7 +799,7 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
-      update_competition_status_on_end_date: {
+      update_competition_status_by_deadline: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
