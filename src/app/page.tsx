@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Footer from "@/components/footer";
 import Hero from "@/components/hero";
 import Navbar from "@/components/navbar";
+import { openCompetitionWithTracking } from "@/utils/tracking";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -89,10 +90,16 @@ function CompetitionDetailsCard({
   requirements,
   rules,
   entryCriteria,
+  bannerUrl,
+  competitionId,
+  competitionTitle,
 }: {
   requirements: string[];
   rules: string;
   entryCriteria: string;
+  bannerUrl?: string;
+  competitionId?: string;
+  competitionTitle?: string;
 }) {
   // Debug log
   console.log('CompetitionDetailsCard received:', { 
@@ -157,8 +164,7 @@ function CompetitionDetailsCard({
         <Button
           className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
           onClick={() => {
-            // This will be handled by the parent component's data
-            console.log("Go to competition clicked");
+            openCompetitionWithTracking(bannerUrl, competitionId, competitionTitle);
           }}
         >
           Go to competition
@@ -871,14 +877,11 @@ export default function Home() {
                             <Button
                               className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                               onClick={() => {
-                                const bannerUrl = competition.banner_url;
-                                if (
-                                  bannerUrl &&
-                                  typeof bannerUrl === "string" &&
-                                  bannerUrl.trim()
-                                ) {
-                                  window.open(bannerUrl.trim(), "_blank");
-                                }
+                                openCompetitionWithTracking(
+                                  competition.banner_url,
+                                  formattedCompetition.id,
+                                  formattedCompetition.title
+                                );
                               }}
                             >
                               Go to competition
@@ -980,6 +983,9 @@ export default function Home() {
                           requirements={formattedCompetition.requirements}
                           rules={formattedCompetition.rules}
                           entryCriteria={formattedCompetition.entryCriteria}
+                          bannerUrl={competition.banner_url}
+                          competitionId={formattedCompetition.id}
+                          competitionTitle={formattedCompetition.title}
                         />
                       }
                     />

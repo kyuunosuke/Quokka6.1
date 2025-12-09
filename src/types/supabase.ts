@@ -466,6 +466,7 @@ export type Database = {
           organizer_id: string | null
           organizer_name: string | null
           organizer_website: string | null
+          outbound_clicks: number | null
           participating_requirement: string | null
           permits: string | null
           prize_description: string | null
@@ -503,6 +504,7 @@ export type Database = {
           organizer_id?: string | null
           organizer_name?: string | null
           organizer_website?: string | null
+          outbound_clicks?: number | null
           participating_requirement?: string | null
           permits?: string | null
           prize_description?: string | null
@@ -540,6 +542,7 @@ export type Database = {
           organizer_id?: string | null
           organizer_name?: string | null
           organizer_website?: string | null
+          outbound_clicks?: number | null
           participating_requirement?: string | null
           permits?: string | null
           prize_description?: string | null
@@ -795,14 +798,12 @@ export type Database = {
         }
         Returns: string
       }
-      is_admin_user: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      update_competition_status_by_deadline: {
-        Args: Record<PropertyKey, never>
+      increment_outbound_clicks: {
+        Args: { competition_id: string }
         Returns: undefined
       }
+      is_admin_user: { Args: never; Returns: boolean }
+      update_competition_status_by_deadline: { Args: never; Returns: undefined }
       validate_admin_credentials: {
         Args: { check_email: string; check_password: string }
         Returns: boolean
