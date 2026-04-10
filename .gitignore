@@ -50,3 +50,5 @@ node_modules/
 .git
 
 .github/
+**/tempobook/**
+node_modules
