@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:mobile="http://www.google.com/schemas/sitemap-mobile/1.0" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
-<url><loc>https://www.quokkamole.com/admin/login</loc><lastmod>2026-04-10T04:38:29.569Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://www.quokkamole.com/storyboards</loc><lastmod>2026-04-10T04:38:29.569Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://www.quokkamole.com/contact</loc><lastmod>2026-04-10T04:38:29.569Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://www.quokkamole.com/api/admin/auth-mode</loc><lastmod>2026-04-10T04:38:29.569Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://www.quokkamole.com</loc><lastmod>2026-04-10T04:38:29.569Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://www.quokkamole.com/dashboard</loc><lastmod>2026-04-10T04:38:29.569Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://www.quokkamole.com/help</loc><lastmod>2026-04-10T04:38:29.569Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://www.quokkamole.com/faq</loc><lastmod>2026-04-10T04:38:29.569Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://www.quokkamole.com/terms</loc><lastmod>2026-04-10T04:38:29.569Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://www.quokkamole.com/privacy</loc><lastmod>2026-04-10T04:38:29.569Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://www.quokkamole.com/client</loc><lastmod>2026-04-10T04:38:29.569Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://www.quokkamole.com/member</loc><lastmod>2026-04-10T04:38:29.569Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://www.quokkamole.com/terms</loc><lastmod>2026-04-10T05:42:48.705Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://www.quokkamole.com/dashboard</loc><lastmod>2026-04-10T05:42:48.705Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://www.quokkamole.com/contact</loc><lastmod>2026-04-10T05:42:48.705Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://www.quokkamole.com</loc><lastmod>2026-04-10T05:42:48.705Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://www.quokkamole.com/client</loc><lastmod>2026-04-10T05:42:48.705Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://www.quokkamole.com/faq</loc><lastmod>2026-04-10T05:42:48.705Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://www.quokkamole.com/admin/login</loc><lastmod>2026-04-10T05:42:48.705Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://www.quokkamole.com/storyboards</loc><lastmod>2026-04-10T05:42:48.705Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://www.quokkamole.com/help</loc><lastmod>2026-04-10T05:42:48.705Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://www.quokkamole.com/member</loc><lastmod>2026-04-10T05:42:48.705Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://www.quokkamole.com/api/admin/auth-mode</loc><lastmod>2026-04-10T05:42:48.705Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://www.quokkamole.com/privacy</loc><lastmod>2026-04-10T05:42:48.705Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
 </urlset>
